@@ -115,7 +115,7 @@ extern "C"{
 
 #define OSIF_DEV_ERROR_DETECT            (STD_ON)
 #define USING_COHORT_DOMAIN_ID     (STD_OFF)
-#define USING_OS_BAREMETAL
+#define USING_OS_FREERTOS
 
 #define USING_GET_CORE_ID
 

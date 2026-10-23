@@ -121,6 +121,15 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Overrun boundary: record releases and executions, but defer the policy for accumulated notifications, skipped releases, deadline misses, and fault reaction to a later decision.
 - Reason: hardware-timer activation matches the intended automotive cyclic execution model and gives hardware, QEMU, and ASIC models an explicit interrupt-to-preemption behavior to validate.
 
+## D-015 - Staged FreeRTOS MPU integration
+
+- Status: ACCEPTED
+- Date: 2026-10-24
+- Decision: Establish and hardware-test the scheduler baseline with the FreeRTOS task-level MPU port disabled (`configENABLE_MPU = 0` and `configUSE_MPU_WRAPPERS_V1 = 0`), while retaining the S32K3 startup MPU configuration selected by the project-level `MPU_ENABLE` definition. Add FreeRTOS privileged/unprivileged task isolation as a dedicated gate before expanding to the complete peripheral-test task set.
+- MPU gate scope: define the S32K358 AMP-specific linker regions and symbols for privileged functions, system calls, privileged data, application code/data, task stacks, and task-owned RAM/MMIO; add MemManage fault diagnostics; prove permitted and intentionally forbidden accesses on hardware for each core.
+- Reason: the NXP FreeRTOS MPU port changes linker layout, task creation, system-call wrappers, and per-task access policy. Separating scheduler bring-up from those changes gives a known-good diagnostic baseline without abandoning MPU isolation as an architectural goal.
+- Compliance boundary: hardware MPU enablement, FreeRTOS task isolation, and lockstep are safety mechanisms but do not by themselves establish an ISO 26262 or ASIL claim.
+
 ## Open decisions
 
 - Full package/build identifiers and applicable safety documentation to freeze beyond S32DS 3.6.5, RTD 7.0.0, GCC 10.2, and FreeRTOS V11.1.0.

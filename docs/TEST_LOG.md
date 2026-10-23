@@ -96,6 +96,33 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Deviations/issues | Exact board PCB revision and probe firmware version remain to be recorded. Build warnings from `BUILD-20261023-002` remain open for remediation, but no compiler/linker errors or runtime-debug failure occurred. |
 | Follow-up | Begin Phase 1 on the lockstep application core; keep `M7_0_2` parked except when deliberately testing multicore behavior. |
 
+### RUN-20261024-001 - H1A FreeRTOS component and startup regression
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0, integrated on `M7_0_0` only |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Pre-commit working tree based on `d69612d`; resulting checkpoint commit records the exact configuration |
+| Core(s) | FreeRTOS component linked into `M7_0_0`; unchanged bare-metal `M7_0_2` companion image |
+| Cache/MPU state | Project startup MPU retained through `MPU_ENABLE`; FreeRTOS task MPU and MPU wrappers disabled for the scheduler baseline |
+| Test ID(s) | `H1A-COMPONENT` |
+| Preconditions | H0 multicore group-launch gate passed |
+| Procedure/command | In S32 Configuration Tools, select the NXP FreeRTOS/CM7/heap-1 components and FreeRTOS OSIF for `M7_0_0`; disable FreeRTOS software timers and task-level MPU; generate; build `Debug_FLASH`; launch the existing multicore debug group; run and inspect both cores for startup or exception regressions |
+| Expected result/tolerance | Both ELFs build; both application cores reach and run the existing placeholder application without HardFault, MemManage fault, reset, or debugger failure |
+| Actual result | `FreeRTOS_Test_SW_M7_0_0.elf` linked successfully with the generated non-MPU FreeRTOS configuration. The operator reported no problem while running the existing multicore hardware debug test. |
+| Outcome | `PASS` for component/link/startup regression only; scheduler and tasks are not yet exercised |
+| Evidence paths | Operator observation in the project session; no new external screenshot/log archived for this sub-gate |
+| Deviations/issues | Dynamic heap-1 remains the generated bring-up setting. Failure hooks, Idle hook, scheduler start, task context switching, STM notification, and FreeRTOS MPU isolation remain untested. |
+| Follow-up | Commit the primary-core integration, then complete the `M7_0_0` scheduler smoke test before modifying `M7_0_2`. |
+
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
 ## Run template
@@ -146,7 +173,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
 | H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
-| H1/2 Dual-core AMP FreeRTOS and observability | PLANNED | - | Four staged sub-gates: primary kernel, secondary kernel, simultaneous schedulers, STM-released A/B tasks at 10/100/1000 ms plus Idle background activity |
+| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-001 | Primary-core component/link/startup regression passed; scheduler execution, FreeRTOS MPU gate, STM release, secondary kernel, and simultaneous AMP remain open |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
 | H5 Timers/timebase | PLANNED | - | |
