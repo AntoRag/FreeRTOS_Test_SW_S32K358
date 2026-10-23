@@ -146,7 +146,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
 | H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
-| H1/2 Dual-core AMP FreeRTOS and observability | PLANNED | - | Four staged sub-gates: primary kernel, secondary kernel, simultaneous schedulers, A/B tasks at 10/100/1000 ms plus Idle background activity |
+| H1/2 Dual-core AMP FreeRTOS and observability | PLANNED | - | Four staged sub-gates: primary kernel, secondary kernel, simultaneous schedulers, STM-released A/B tasks at 10/100/1000 ms plus Idle background activity |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
 | H5 Timers/timebase | PLANNED | - | |

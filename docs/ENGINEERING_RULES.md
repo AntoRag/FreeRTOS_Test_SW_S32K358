@@ -69,8 +69,12 @@ Rules: ASCII, one record per CRLF-terminated line, fixed field order per record 
 - Every peripheral, interrupt route, DMA channel, and associated buffer has one recorded owning core at a time.
 - Use only `...FromISR` APIs from interrupt context and honor the port's maximum syscall interrupt priority.
 - Prefer direct-to-task notifications for one-to-one events; queues for copied messages; mutexes only for ownership with priority inheritance.
-- Implement every periodic activity as an independent task with its own `vTaskDelayUntil()` state; do not use one shared dispatcher for all work in a rate class.
+- Implement every periodic activity as an independent task that blocks on its own task notification. Do not use `vTaskDelay()` or `vTaskDelayUntil()` as the application cyclic-release mechanism.
+- Use one core-owned STM instance with continuous compare channels for the 10 ms, 100 ms, and 1000 ms releases. Each compare ISR releases the A and B tasks in its rate class with ISR-safe task notifications.
+- Enable preemption (`configUSE_PREEMPTION == 1`) and request a context switch from the ISR when a higher-priority task becomes ready.
 - Use 10 ms, 100 ms, and 1000 ms rate classes. Give tasks in the same class equal priority and never depend on their relative execution order. Order classes rate-monotonically: 10 ms above 100 ms above 1000 ms.
+- Assign STM interrupt priorities within the FreeRTOS port's permitted syscall-interrupt range before calling any `...FromISR` API.
+- Instrument pending releases and execution counts, but do not impose an overrun handling policy until one is explicitly accepted.
 - Use the kernel Idle task/Idle hook as background activity. The Idle hook must remain non-blocking, bounded, and free of peripheral waits or functional tests that may stall.
 - Prefer static allocation for kernel objects in the test harness.
 - Enable and prove assertions, stack-overflow detection, and useful high-water/runtime diagnostics.

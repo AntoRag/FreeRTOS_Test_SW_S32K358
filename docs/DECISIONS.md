@@ -105,10 +105,21 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 
 - Status: ACCEPTED
 - Date: 2026-10-23
-- Decision: In each AMP image, implement every periodic activity as an independent FreeRTOS task with its own timing loop. Establish 10 ms, 100 ms, and 1000 ms rate classes. The baseline contains an A and B task in every class: `TaskA_10ms`, `TaskB_10ms`, `TaskA_100ms`, `TaskB_100ms`, `TaskA_1000ms`, and `TaskB_1000ms`.
-- Scheduling policy: use `vTaskDelayUntil()` per task. Tasks in the same rate class have equal priority and no defined relative order. Use rate-monotonic priority ordering between classes: 10 ms above 100 ms above 1000 ms.
+- Decision: In each AMP image, implement every periodic activity as an independent FreeRTOS task with its own activation state. Establish 10 ms, 100 ms, and 1000 ms rate classes. The baseline contains an A and B task in every class: `TaskA_10ms`, `TaskB_10ms`, `TaskA_100ms`, `TaskB_100ms`, `TaskA_1000ms`, and `TaskB_1000ms`.
+- Original scheduling policy: tasks were to self-release using `vTaskDelayUntil()`. This portion is superseded by D-014; task independence, rate classes, task set, and priority ordering remain accepted.
 - Background policy: use the FreeRTOS Idle task and a strictly non-blocking Idle hook as the per-core background activity. Do not create a separate background application task in the baseline.
 - Reason: independent task state and timing make interference, starvation, WCET, missed releases, and peripheral-model behavior observable without coupling unrelated tests through one dispatcher.
+
+## D-014 - STM interrupt-driven task activation and preemption
+
+- Status: ACCEPTED
+- Date: 2026-10-23
+- Decision: Application periodic tasks do not self-release with FreeRTOS delay APIs. On each core, three continuous STM compare channels generate the 10 ms, 100 ms, and 1000 ms activation interrupts. Each channel releases the A and B tasks in its rate class using ISR-safe FreeRTOS task notifications.
+- Preemption policy: set `configUSE_PREEMPTION = 1`. After releasing tasks, the ISR requests the FreeRTOS port context switch when required, so a newly readied higher-priority task preempts lower-priority application work.
+- Ownership policy: use a core-owned STM instance and route its interrupts to that core. Freeze exact STM instances and channel numbers only after S32 Configuration Tools validates the two AMP configurations and their interrupt ownership.
+- Kernel-tick boundary: the FreeRTOS tick remains enabled for kernel services and timeouts but is not the application cyclic-task activation source.
+- Overrun boundary: record releases and executions, but defer the policy for accumulated notifications, skipped releases, deadline misses, and fault reaction to a later decision.
+- Reason: hardware-timer activation matches the intended automotive cyclic execution model and gives hardware, QEMU, and ASIC models an explicit interrupt-to-preemption behavior to validate.
 
 ## Open decisions
 

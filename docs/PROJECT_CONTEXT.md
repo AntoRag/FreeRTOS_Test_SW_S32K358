@@ -63,7 +63,7 @@ Sources are the local PDFs listed in the Source register below.
 - Despite their names, the current H0 projects are bare-metal: both `.mex` files select `OsIfBaremetalType`, generated headers define `USING_OS_BAREMETAL`, and neither project contains `FreeRTOSConfig.h` or kernel sources.
 - S32DS 3.6.5 includes PlatformSDK S32K3 FreeRTOS V11.1.0, the GCC Cortex-M7 `r0p1` port, and an exact `FreeRTOS_Toggle_Led_Example_S32K358`. That single-core example uses the required AMP-side settings (`configUSE_SMP = false`, `configNUMBER_OF_CORES = 1`) and is the integration reference for each image.
 - An exact NXP `FreeRTOS_SMP_Example_S32K358_2xCores` is also installed, but SMP is explicitly not the selected product architecture. It may be consulted only for applicable MCU startup details.
-- The accepted baseline scheduling model uses six independent application tasks on each FreeRTOS instance: A and B tasks in each 10 ms, 100 ms, and 1000 ms rate class. Tasks never share timing state or rely on same-priority execution order. Each kernel's Idle task/Idle hook supplies strictly bounded, non-blocking background activity; there is no separate baseline background task.
+- The accepted baseline scheduling model uses six independent application tasks on each FreeRTOS instance: A and B tasks in each 10 ms, 100 ms, and 1000 ms rate class. Three continuous STM compare channels per core release the corresponding task pairs through ISR-safe task notifications; tasks do not self-release with FreeRTOS delay APIs. Preemption is enabled. Tasks never rely on same-priority execution order. Each kernel's Idle task/Idle hook supplies strictly bounded, non-blocking background activity; there is no separate baseline background task. Overrun reaction is intentionally deferred while activation/execution counts are instrumented.
 
 ## User-confirmed prerequisites (2026-10-23)
 
@@ -78,6 +78,7 @@ Sources are the local PDFs listed in the Source register below.
 | MCU reference manual | `S32K3XXRM.pdf` | architecture, memory, clocks, reset, peripheral registers |
 | Board user manual | `UM12541.pdf` | power, debug, board routing, onboard peripherals |
 | FreeRTOS API reference | `FreeRTOS_Reference_Manual_V10.0.0.pdf` | kernel APIs and configuration vocabulary |
+| Installed RTD GPT user manual | `C:/NXP/S32DS.3.6.5/S32DS/software/PlatformSDK_S32K3/RTD/Gpt_TS_T40D34M70I0R0/doc/RTD_GPT_UM.pdf` | STM continuous/one-shot modes, compare channels, callbacks, counters, and interrupt status |
 
 Future documents to acquire if available: board schematic/BOM, S32K358 data sheet, S32K3 hardware design guidelines, installed RTD release notes and driver user manuals, S32DS user guide, debugger/OpenSDA guide, and the exact FreeRTOS kernel documentation matching the installed package.
 
