@@ -1,0 +1,43 @@
+# S32 Design Studio workspace state (machine/user specific)
+/.metadata/
+/RemoteSystemsTempFiles/
+/.s32ds_packages_support/
+
+# Managed-build output directories. Keep Project_Settings/Debugger tracked.
+**/Debug/
+**/Release/
+**/Debug_FLASH/
+**/Release_FLASH/
+**/Debug_RAM/
+**/Release_RAM/
+
+# Compiler, linker, and image artifacts
+*.o
+*.obj
+*.d
+*.args
+*.a
+*.elf
+*.map
+*.hex
+*.srec
+*.s19
+*.mot
+*.bin
+*.lst
+
+# S32 Configuration Tools scratch/export files; the .mex files are authoritative
+**/ClockConfigurationMappings.txt
+**/ClockYaml.txt
+
+# Third-party reference documents are catalogued in docs/REFERENCES.md
+/*.pdf
+
+# Editor and operating-system noise
+*~
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
