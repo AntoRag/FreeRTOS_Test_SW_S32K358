@@ -123,6 +123,33 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Deviations/issues | Dynamic heap-1 remains the generated bring-up setting. Failure hooks, Idle hook, scheduler start, task context switching, STM notification, and FreeRTOS MPU isolation remain untested. |
 | Follow-up | Commit the primary-core integration, then complete the `M7_0_0` scheduler smoke test before modifying `M7_0_2`. |
 
+### RUN-20261024-002 - H1B FreeRTOS component and startup regression
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 independently integrated into `M7_0_0` and `M7_0_2` |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Primary integration checkpoint `65e772e`; resulting secondary checkpoint commit records the exact `M7_0_2` configuration |
+| Core(s) | `M7_0_0` plus independent `M7_0_2`; `CM7_1` remains the lockstep checker |
+| Cache/MPU state | Startup MPU retained through `MPU_ENABLE`; FreeRTOS task MPU and wrappers disabled on both kernels for the scheduler baseline |
+| Test ID(s) | `H1B-COMPONENT` |
+| Preconditions | `RUN-20261024-001` passed; matching FreeRTOS settings generated for both AMP images |
+| Procedure/command | Clean both projects; Build All; launch `FreeRTOS_Test_SW_Debug_FLASH_PNE_group`; confirm both cores reach their respective `main()` functions; resume both cores and observe for faults or resets |
+| Expected result/tolerance | Both ELF images build and both cores run the placeholder application without compiler/linker error, HardFault, MemManage fault, assertion, unexpected reset, or debugger failure |
+| Actual result | Fresh `M7_0_0` and `M7_0_2` ELF files were produced. The operator confirmed that both cores ran without observed errors in the multicore group-debug session. |
+| Outcome | `PASS` for dual-kernel component/link/startup regression; neither scheduler is started yet |
+| Evidence paths | Operator observation in the project session; no new external screenshot/log archived for this sub-gate |
+| Deviations/issues | Dynamic heap-1 remains a documented bring-up exception. Scheduler execution, hooks, STM notification, task-level MPU isolation, and simultaneous task execution remain untested. |
+| Follow-up | Commit the secondary-core integration, then start the scheduler-smoke implementation on `M7_0_0` only. |
+
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
 ## Run template
@@ -173,7 +200,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
 | H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
-| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-001 | Primary-core component/link/startup regression passed; scheduler execution, FreeRTOS MPU gate, STM release, secondary kernel, and simultaneous AMP remain open |
+| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-002 | Both kernel components link and pass multicore startup regression; scheduler execution, hooks, FreeRTOS MPU gate, STM release, and simultaneous AMP task execution remain open |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
 | H5 Timers/timebase | PLANNED | - | |

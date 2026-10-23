@@ -373,9 +373,25 @@
                   <data type="Version">1.0.0</data>
                </feature>
             </dependency>
+            <dependency resourceType="SWComponent" resourceId="platform.os.freertos" description="freertos is not found in the toolchain/IDE project. The project will not compile!" problem_level="2" source="Peripherals">
+               <feature name="enabled" evaluation="equal">
+                  <data type="Boolean">true</data>
+               </feature>
+            </dependency>
+            <dependency resourceType="SWComponent" resourceId="platform.os.freertos" description="An unsupported version of the freertos in the toolchain/IDE project. Required: ${required_value}, actual: ${actual_value}. The project might not compile correctly." problem_level="1" source="Peripherals">
+               <feature name="version" evaluation="equivalent">
+                  <data type="Version">1.0.0</data>
+               </feature>
+            </dependency>
+            <dependency resourceType="Tool" resourceId="Clocks" description="The Clocks tool is required by the Peripherals tool, but it is disabled." problem_level="2" source="Peripherals">
+               <feature name="enabled" evaluation="equal">
+                  <data>true</data>
+               </feature>
+            </dependency>
          </dependencies>
          <generated_project_files>
             <file path="generate/include/DeviceDefinition.h" update_enabled="true"/>
+            <file path="generate/include/FreeRTOSConfig.h" update_enabled="true"/>
             <file path="generate/include/OsIf_ArchCfg.h" update_enabled="true"/>
             <file path="generate/include/OsIf_Cfg.h" update_enabled="true"/>
             <file path="generate/include/Siul2_Port_Ip_Defines.h" update_enabled="true"/>
@@ -412,9 +428,9 @@
                            <setting name="OsIfSoftwareSemaphoredEnable" value="false"/>
                            <struct name="OsIfOperatingSystemType">
                               <setting name="Name" value="OsIfOperatingSystemType"/>
-                              <setting name="Choice" value="OsIfBaremetalType"/>
-                              <struct name="OsIfBaremetalType">
-                                 <setting name="Name" value="OsIfOperatingSystemType"/>
+                              <setting name="Choice" value="OsIfFreeRtosType"/>
+                              <struct name="OsIfFreeRtosType" quick_selection="Default">
+                                 <setting name="Name" value=""/>
                               </struct>
                            </struct>
                            <array name="OsIfEcucPartitionRef"/>
@@ -471,6 +487,134 @@
                                  </array>
                               </struct>
                            </array>
+                        </struct>
+                     </config_set>
+                  </instance>
+                  <instance name="freertos" uuid="b4cc943b-12cc-449e-9696-ea21701a68dc" type="freertos" type_id="freertos" mode="general" enabled="true" comment="" custom_name_enabled="false" editing_lock="false">
+                     <config_set name="freertos_driver">
+                        <struct name="general_tab">
+                           <struct name="configCPU_CLOCK_HZ">
+                              <setting name="FreeRTOSClockFunctionalGroup" value="ClockConfig0"/>
+                              <setting name="configCPU_CLOCK_MODE" value="default_clock"/>
+                              <setting name="configUSER_CLOCK_VALUE" value="160000000"/>
+                           </struct>
+                           <setting name="configTICK_RATE_HZ" value="1000"/>
+                           <setting name="configMAX_PRIORITIES" value="5"/>
+                           <setting name="configMINIMAL_STACK_SIZE" value="90"/>
+                           <setting name="configMAX_TASK_NAME_LEN" value="20"/>
+                           <setting name="configENABLE_MPU" value="false"/>
+                           <setting name="configUSE_MPU_WRAPPERS_V1" value="false"/>
+                           <setting name="configFIRST_CONFIGURABLE_REGION" value="9"/>
+                           <setting name="configENFORCE_SYSTEM_CALLS_FROM_KERNEL_ONLY" value="false"/>
+                           <setting name="configALLOW_UNPRIVILEGED_CRITICAL_SECTIONS" value="true"/>
+                           <setting name="configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY" value="1"/>
+                           <setting name="configUSE_16_BIT_TICKS" value="false"/>
+                           <setting name="configIDLE_SHOULD_YIELD" value="true"/>
+                           <setting name="configUSE_PREEMPTION" value="true"/>
+                           <setting name="configNUM_THREAD_LOCAL_STORAGE_POINTERS" value="0"/>
+                           <setting name="configUSE_PORT_OPTIMISED_TASK_SELECTION" value="false"/>
+                           <setting name="configUSE_TASK_NOTIFICATIONS" value="true"/>
+                           <setting name="configUSE_TIME_SLICING" value="true"/>
+                           <setting name="configUSE_NEWLIB_REENTRANT" value="false"/>
+                           <setting name="configENABLE_BACKWARD_COMPATIBILITY" value="true"/>
+                           <setting name="configUSE_POSIX_ERRNO" value="false"/>
+                           <setting name="configUSE_APPLICATION_TASK_TAG" value="false"/>
+                           <setting name="configRECORD_STACK_HIGH_ADDRESS" value="false"/>
+                           <setting name="configMESSAGE_BUFFER_LENGTH_TYPE" value=""/>
+                           <setting name="configUSE_HW_SEMA42" value="false"/>
+                           <struct name="configASSERT_id">
+                              <setting name="boolConfigASSERT" value="true"/>
+                              <setting name="configASSERT" value="if((x)==0) {__asm volatile (&quot; cpsid i &quot; ::: &quot;memory&quot;); for( ;; );}"/>
+                           </struct>
+                        </struct>
+                        <struct name="memory_tab">
+                           <setting name="configSUPPORT_STATIC_ALLOCATION" value="false"/>
+                           <setting name="configSUPPORT_DYNAMIC_ALLOCATION" value="true"/>
+                           <setting name="memory_scheme_id" value="heap1"/>
+                           <setting name="configTOTAL_HEAP_SIZE" value="8192"/>
+                           <setting name="configAPPLICATION_ALLOCATED_HEAP" value="false"/>
+                        </struct>
+                        <struct name="symmetricmultiprocessing_tab">
+                           <setting name="configUSE_SMP" value="false"/>
+                           <setting name="configNUMBER_OF_CORES" value="1"/>
+                           <setting name="configUSE_CORE_AFFINITY" value="true"/>
+                           <struct name="configCORE_IN_USED_id">
+                              <setting name="configCPU_0" value="false"/>
+                              <setting name="configCPU_1" value="false"/>
+                              <setting name="configCPU_2" value="false"/>
+                              <setting name="configCPU_3" value="false"/>
+                           </struct>
+                           <setting name="configCORE_MASTER" value="0"/>
+                           <setting name="configRUN_MULTIPLE_PRIORITIES" value="true"/>
+                           <setting name="configUSE_TASK_PREEMPTION_DISABLE" value="false"/>
+                           <setting name="configRECORD_STACK_HIGH_ADDRESS" value="false"/>
+                           <setting name="configTICK_CORE" value="false"/>
+                           <setting name="configTIMER_SERVICE_TASK_CORE_AFFINITY" value="false"/>
+                           <setting name="configUSE_PASSIVE_IDLE_HOOK" value="false"/>
+                        </struct>
+                        <struct name="hook_tab">
+                           <setting name="configUSE_IDLE_HOOK" value="false"/>
+                           <setting name="configUSE_TICK_HOOK" value="false"/>
+                           <setting name="configUSE_MALLOC_FAILED_HOOK" value="false"/>
+                           <setting name="configCHECK_FOR_STACK_OVERFLOW" value="0"/>
+                           <setting name="configUSE_DAEMON_TASK_STARTUP_HOOK" value="false"/>
+                        </struct>
+                        <struct name="rttsgrd_tab">
+                           <struct name="configGENERATE_RUN_TIME_STATS_id">
+                              <setting name="configGENERATE_RUN_TIME_STATS" value="false"/>
+                              <setting name="portCONFIGURE_TIMER_FOR_RUN_TIME_STATS" value=""/>
+                              <setting name="portGET_RUN_TIME_COUNTER_VALUE" value="xTaskGetTickCount()"/>
+                           </struct>
+                           <setting name="configUSE_TRACE_FACILITY" value="true"/>
+                           <setting name="configUSE_STATS_FORMATTING_FUNCTIONS" value="true"/>
+                        </struct>
+                        <struct name="co_routines_tab">
+                           <setting name="configUSE_CO_ROUTINES" value="false"/>
+                           <setting name="configMAX_CO_ROUTINE_PRIORITIES" value="2"/>
+                        </struct>
+                        <struct name="sandm_tab">
+                           <setting name="configUSE_MUTEXES" value="true"/>
+                           <setting name="configUSE_RECURSIVE_MUTEXES" value="true"/>
+                           <setting name="configUSE_COUNTING_SEMAPHORES" value="true"/>
+                        </struct>
+                        <struct name="st_tab">
+                           <setting name="configUSE_TIMERS" value="false"/>
+                           <setting name="configTIMER_TASK_PRIORITY" value="2"/>
+                           <setting name="configTIMER_QUEUE_LENGTH" value="10"/>
+                           <setting name="configTIMER_TASK_STACK_DEPTH" value="180"/>
+                        </struct>
+                        <struct name="tidlem_tab">
+                           <setting name="configUSE_TICKLESS_IDLE" value="false"/>
+                           <setting name="configEXPECTED_IDLE_TIME_BEFORE_SLEEP" value="2"/>
+                           <setting name="configPRE_SLEEP_PROCESSING" value=""/>
+                           <setting name="configPOST_SLEEP_PROCESSING" value=""/>
+                        </struct>
+                        <struct name="queue_tab">
+                           <setting name="configQUEUE_REGISTRY_SIZE" value="2"/>
+                           <setting name="configUSE_QUEUE_SETS" value="false"/>
+                        </struct>
+                        <struct name="api_tab">
+                           <setting name="INCLUDE_vTaskPrioritySet" value="true"/>
+                           <setting name="INCLUDE_uxTaskPriorityGet" value="true"/>
+                           <setting name="INCLUDE_vTaskDelete" value="true"/>
+                           <setting name="INCLUDE_vTaskSuspend" value="true"/>
+                           <setting name="INCLUDE_vTaskDelayUntil" value="true"/>
+                           <setting name="INCLUDE_vTaskDelay" value="true"/>
+                           <setting name="INCLUDE_xTaskGetSchedulerState" value="true"/>
+                           <setting name="INCLUDE_xTaskGetCurrentTaskHandle" value="true"/>
+                           <setting name="INCLUDE_uxTaskGetStackHighWaterMark" value="true"/>
+                           <setting name="INCLUDE_uxTaskGetStackHighWaterMark2" value="false"/>
+                           <setting name="INCLUDE_xTaskGetIdleTaskHandle" value="false"/>
+                           <setting name="INCLUDE_eTaskGetState" value="true"/>
+                           <setting name="INCLUDE_xEventGroupSetBitFromISR" value="false"/>
+                           <setting name="INCLUDE_xTimerPendFunctionCall" value="false"/>
+                           <setting name="INCLUDE_xTaskAbortDelay" value="true"/>
+                           <setting name="INCLUDE_xTaskGetHandle" value="true"/>
+                           <setting name="INCLUDE_xTaskResumeFromISR" value="true"/>
+                           <setting name="INCLUDE_xQueueGetMutexHolder" value="true"/>
+                        </struct>
+                        <struct name="us_tab">
+                           <setting name="configUSER_SETTINGS" value=""/>
                         </struct>
                      </config_set>
                   </instance>
