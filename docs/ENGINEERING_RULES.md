@@ -69,7 +69,9 @@ Rules: ASCII, one record per CRLF-terminated line, fixed field order per record 
 - Every peripheral, interrupt route, DMA channel, and associated buffer has one recorded owning core at a time.
 - Use only `...FromISR` APIs from interrupt context and honor the port's maximum syscall interrupt priority.
 - Prefer direct-to-task notifications for one-to-one events; queues for copied messages; mutexes only for ownership with priority inheritance.
-- Use `vTaskDelayUntil()` for periodic tasks.
+- Implement every periodic activity as an independent task with its own `vTaskDelayUntil()` state; do not use one shared dispatcher for all work in a rate class.
+- Use 10 ms, 100 ms, and 1000 ms rate classes. Give tasks in the same class equal priority and never depend on their relative execution order. Order classes rate-monotonically: 10 ms above 100 ms above 1000 ms.
+- Use the kernel Idle task/Idle hook as background activity. The Idle hook must remain non-blocking, bounded, and free of peripheral waits or functional tests that may stall.
 - Prefer static allocation for kernel objects in the test harness.
 - Enable and prove assertions, stack-overflow detection, and useful high-water/runtime diagnostics.
 - Keep interrupt priority assignments in one reviewed table.

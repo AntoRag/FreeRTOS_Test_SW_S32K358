@@ -47,17 +47,29 @@ Do not copy kernel files or invent port settings manually. Add the matching SDK 
 
 ## Initial task model
 
-Use the same conceptual task set in each image, with core identity supplied by build configuration rather than duplicated behavior hidden in task names.
+Each periodic activity is an independent FreeRTOS task. There is no shared cyclic dispatcher for all 10 ms, 100 ms, or 1000 ms work. Each task owns its own state, stack, timing loop, execution counter, and test responsibility.
 
-| Task role | Purpose | Initial state |
+| Task class | Scheduling rule | Initial purpose |
 |---|---|---|
-| Supervisor | startup state, health checks, failure-hook reporting, worker control | periodic or event-driven |
-| Heartbeat | prove the local scheduler/tick and provide a core-distinct observable pattern | periodic via `vTaskDelayUntil()` |
-| Test worker | execute one bounded peripheral test at a time | blocked on direct notification or queue |
+| 10 ms periodic | independent task loop using `vTaskDelayUntil()` | short, bounded, time-critical tests |
+| 100 ms periodic | independent task loop using `vTaskDelayUntil()` | medium-rate tests and health sampling |
+| 1000 ms periodic | independent task loop using `vTaskDelayUntil()` | heartbeat, reporting, and slow tests |
+| FreeRTOS Idle task | runs only when no ready application task exists | background counter and minimal non-blocking housekeeping through the Idle hook |
 
-Recommended debugger-visible names are `C0_Supervisor`, `C0_Heartbeat`, `C0_TestWorker`, and the corresponding `C2_...` names. Application-facing creation functions follow the project naming rules, for example `AppTasks_Init()`, while private task entry functions remain file-static, such as `heartbeatTask()`.
+The Idle task is the background task for each RTOS instance; do not create a separate application background task in the baseline. `vApplicationIdleHook()` must never block, wait for a peripheral, take a mutex, or perform an unbounded test. A future background operation that may block or has a deadline must receive its own application task.
 
-Prefer static allocation. Suggested file-static storage names are `s_heartbeatTaskTcb`, `s_heartbeatTaskStack`, and equivalent names for other tasks. Period configuration uses explicit units such as `APP_HEARTBEAT_PERIOD_MS` and conversion through `pdMS_TO_TICKS()`.
+The task model supports more than one independent task at the same period. For example, `TaskA_10ms` and `TaskB_10ms` have separate entry functions and `vTaskDelayUntil()` state. Tasks in the same period class have equal priority and must not depend on their relative execution order. Across period classes, use rate-monotonic ordering: 10 ms above 100 ms, and 100 ms above 1000 ms; all application tasks remain above Idle.
+
+The minimum H1D proof set on each core is:
+
+- `TaskA_10ms` and `TaskB_10ms`, proving that same-rate activities are independent;
+- `TaskA_100ms`;
+- `TaskA_1000ms`;
+- the kernel Idle task with a per-core Idle-hook counter.
+
+Debugger-visible task names include physical core identity, for example `C0_TaskA_10ms`, `C0_TaskB_10ms`, and the corresponding `C2_...` names. The configured `configMAX_TASK_NAME_LEN` must be checked before these strings are frozen. Source-level functions use module prefixes and functional names; generic `TaskA`/`TaskB` identifiers are bring-up names and are replaced by purpose-specific names when a task receives a permanent peripheral-test role.
+
+Prefer static allocation. Each task has separate file-static TCB and stack storage, for example `s_taskA10msTcb` and `s_taskA10msStack`. Period constants include units, such as `APP_TASK_PERIOD_10_MS`, and are converted using `pdMS_TO_TICKS()`. Each task maintains at least a release counter, deadline-miss counter, last execution time, and maximum execution time. Measurements from the two independent RTOS ticks are not assumed to be phase-aligned across cores.
 
 ## Bring-up sub-gates
 
@@ -66,7 +78,7 @@ Prefer static allocation. Suggested file-static storage names are `s_heartbeatTa
 | H1A | FreeRTOS on `M7_0_0` only | scheduler starts; one periodic counter advances; no assert/reset |
 | H1B | FreeRTOS on `M7_0_2` only | independent scheduler and periodic counter advance |
 | H1C | both AMP images together | both counters/ticks advance; memory maps remain isolated; group debug succeeds |
-| H1D | reusable task model and observability | supervisor/heartbeat/worker tasks on both cores; distinct LED/trace behavior; core-0 UART identity banner |
+| H1D | reusable task model and observability | independent 10/100/1000 ms tasks plus Idle-hook background activity on both cores; distinct LED/trace behavior; core-0 UART identity banner |
 
 The combined H1/2 gate is passed only after every sub-gate passes on the physical board and its evidence is recorded.
 

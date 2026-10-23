@@ -38,13 +38,15 @@ Staged work and evidence:
 1. **H1A - primary kernel:** attach the NXP FreeRTOS and Cortex-M7 port components to `M7_0_0`, select FreeRTOS in OSIF, generate, clean-build, flash, start the scheduler, and prove one periodic task.
 2. **H1B - secondary kernel:** repeat the same integration independently for `M7_0_2`; prove its scheduler and periodic task before simultaneous execution.
 3. **H1C - simultaneous AMP:** group-launch both images and prove both independent tick counts and task counters progress without asserts, resets, or memory overlap.
-4. **H1D - observability and worker model:** create the supervisor, heartbeat, and blocked test-worker task set on each core; use `vTaskDelayUntil()` for periodic work; assign separate LED indications and route the initial LPUART6 reporting service through `M7_0_0`.
+4. **H1D - independent timing-task model:** on each core create independent 10 ms, 100 ms, and 1000 ms tasks, including two separate 10 ms tasks to prove same-rate independence; use each kernel's Idle task/Idle hook for bounded background activity; assign separate LED/trace indications and route the initial LPUART6 reporting service through `M7_0_0`.
 
 Engineering work:
 
 - derive configuration and interrupt-priority settings from the installed NXP S32K358 single-core example, not from generic upstream defaults;
 - prefer static task and synchronization-object allocation, with an explicitly documented exception if dynamic allocation is temporarily needed for bring-up;
 - enable `configASSERT`, stack-overflow detection, failure hooks, and task stack high-water inspection;
+- give each periodic task its own `vTaskDelayUntil()` state and timing diagnostics; do not route a complete rate class through one shared dispatcher;
+- use equal priority for tasks in the same rate class and rate-monotonic priority ordering between the 10 ms, 100 ms, and 1000 ms classes;
 - characterize SW2/SW3 polarity and record the board-manual discrepancy;
 - define a bounded startup/synchronization contract so `M7_0_2` cannot use global or shared hardware before `M7_0_0` declares it ready;
 - record per-core clock, tick, cache/MPU, stack, and linker-memory settings.

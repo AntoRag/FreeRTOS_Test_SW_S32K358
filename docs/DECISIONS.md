@@ -101,6 +101,15 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Installed kernel identity: FreeRTOS `V11.1.0` under `PlatformSDK_S32K3/FreeRTOS` in S32DS 3.6.5.
 - Reason: use the exact vendor-supplied port, S32 Configuration Tools component model, interrupt integration, and version that match the installed RTD environment.
 
+## D-013 - Independent per-core periodic task model
+
+- Status: ACCEPTED
+- Date: 2026-10-23
+- Decision: In each AMP image, implement every periodic activity as an independent FreeRTOS task with its own timing loop. Establish 10 ms, 100 ms, and 1000 ms rate classes; allow multiple independent tasks in a class, such as `TaskA_10ms` and `TaskB_10ms`.
+- Scheduling policy: use `vTaskDelayUntil()` per task. Tasks in the same rate class have equal priority and no defined relative order. Use rate-monotonic priority ordering between classes: 10 ms above 100 ms above 1000 ms.
+- Background policy: use the FreeRTOS Idle task and a strictly non-blocking Idle hook as the per-core background activity. Do not create a separate background application task in the baseline.
+- Reason: independent task state and timing make interference, starvation, WCET, missed releases, and peripheral-model behavior observable without coupling unrelated tests through one dispatcher.
+
 ## Open decisions
 
 - Full package/build identifiers and applicable safety documentation to freeze beyond S32DS 3.6.5, RTD 7.0.0, GCC 10.2, and FreeRTOS V11.1.0.
