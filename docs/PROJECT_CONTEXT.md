@@ -31,7 +31,7 @@ Sources are the local PDFs listed in the Source register below.
 
 - Board: FRDM-A-S32K358, board manual UM12541 Rev. 1.0 dated 8 June 2026.
 - MCU: S32K358 in a 289-ball MAPBGA package, 240 MHz class, 8 MB program flash, HSE_B, ASIL-D capable device family.
-- Core topology: one Cortex-M7 lockstep pair (`CM7_0` plus checker `CM7_1`) and one independent Cortex-M7 (`CM7_2`). Initial software should stay on the lockstep application core until multicore is introduced deliberately.
+- Core topology: one Cortex-M7 lockstep pair (`CM7_0` plus checker `CM7_1`) and one independent Cortex-M7 (`CM7_2`). The accepted software architecture uses AMP: one single-core FreeRTOS instance on `M7_0_0` and a separate instance on `M7_0_2`; the checker never executes tasks.
 - Board debug: onboard K26 OpenSDA through USB-C; a 20-pin Cortex Debug + ETM connector is also present. External JTAG requires the documented jumper change.
 - Default serial bridge: `LPUART6_RX` on PTA15 and `LPUART6_TX` on PTA16 are routed for PC serial communication.
 - User outputs: RGB LED D16 on PTG29/PTG30/PTG31 and D22 on PTF21/PTF22/PTF23; LEDs are documented active-high.
@@ -41,7 +41,7 @@ Sources are the local PDFs listed in the Source register below.
 - Power-up procedure from UM12541: connect USB-C at J11, move SW5 to 2-3, and verify power indicators. A USB-C PD-capable source/cable is recommended.
 - FS26 is populated in debug mode by default; watchdog/safety normal mode requires hardware population changes and is deferred.
 - Reference manual: S32K3XXRM Rev. 12 dated 11 November 2025, 5,394 pages. It covers clocks, reset/boot, SIUL2, DMA, ADC, timers, LPSPI, LPI2C, FlexCAN, GMAC/EMAC, LPUART, QuadSPI, uSDHC, debug, and safety blocks.
-- FreeRTOS reference supplied: kernel API reference for version 10.0.0, Issue 1. The actual kernel version installed/selected in S32DS remains to be confirmed and must not be assumed from this manual.
+- FreeRTOS reference supplied: kernel API reference for version 10.0.0, Issue 1. The installed PlatformSDK kernel is V11.1.0, so the supplied PDF is background vocabulary only and must not be treated as the authoritative API/configuration reference for this build.
 
 ## Workspace/tool observations (2026-10-23)
 
@@ -55,17 +55,20 @@ Sources are the local PDFs listed in the Source register below.
 - The projects reference PlatformSDK/RTD 7.0.0 and FreeMASTER 1.5.0. These observations must still be confirmed in the live S32DS SDK/project views before they become the frozen baseline.
 - FreeMASTER is NXP's runtime instrumentation/visualization communication driver and host tool, separate from FreeRTOS. It can expose firmware variables, capture signals, tune parameters, and issue application commands over transports such as LPUART, CAN, or background debug communication.
 - FreeMASTER source/include paths are attached to both current core projects, but neither application `main.c` currently calls `FMSTR_Init()` or `FMSTR_Poll()`. Therefore it is present in the build configuration but not yet operational as an application service.
-- Both `M7_0_0` and `M7_0_2` now have cleanly regenerated `Debug_FLASH` object sets, ELF files, and map files. The image totals are 54,724 bytes for core 0 and 46,444 bytes for core 2 (`text + data + bss`). The build has zero errors, but a full core-0 compile exposes 28 FreeMASTER `-Wundef` warnings plus three linker enum-ABI diagnostics involving `libc_nano.a`/`libgcc.a`. These warnings are tracked for disposition and must not be hidden by relying only on a later incremental build summary. Real-board execution is still required before accepting gate H0.
+- Both `M7_0_0` and `M7_0_2` have cleanly regenerated `Debug_FLASH` object sets, ELF files, and map files. The H0 image totals were 54,724 bytes for core 0 and 46,444 bytes for core 2 (`text + data + bss`). The build has zero errors, but a full core-0 compile exposes 28 FreeMASTER `-Wundef` warnings plus three linker enum-ABI diagnostics involving `libc_nano.a`/`libgcc.a`. These warnings remain tracked for disposition and must not be hidden by relying only on a later incremental build summary.
 - No FreeRTOS kernel sources or `FreeRTOSConfig.h` were found in the generated project tree at the snapshot time, despite FreeRTOS-related S32 Configuration Tools log messages. Confirm component selection and generated output before calling this a FreeRTOS project.
 - Earlier indexer summaries reported unresolved inclusions and syntax markers, but the controlled compiler builds completed with zero errors and zero warnings. Recheck the live Problems view separately; indexer markers are not compiler evidence.
 - S32 Configuration Tools logged FreeRTOS component-reference, `Port_GetNumOfPinConfig`, and SIUL2 port-setting messages. Reproduce and assess these through the live Problems/build views before changing configuration.
-- Hardware gate H0 passed on 2026-10-23: the primary image was reflashed and stopped in `main()` repeatably, and the generated `Debug_FLASH` group launch attached both `M7_0_0` and `M7_0_2` ELF sessions at their respective `main()` functions. Evidence and hashes are recorded in `docs/TEST_LOG.md`. Phase 1 will return to the lockstep application core; independent-core behavior remains reserved for deliberate multicore tests.
+- Hardware gate H0 passed on 2026-10-23: the primary image was reflashed and stopped in `main()` repeatably, and the generated `Debug_FLASH` group launch attached both `M7_0_0` and `M7_0_2` ELF sessions at their respective `main()` functions. Evidence and hashes are recorded in `docs/TEST_LOG.md`. The combined Phase 1/2 now introduces an independent FreeRTOS instance on each application core through staged AMP sub-gates.
+- Despite their names, the current H0 projects are bare-metal: both `.mex` files select `OsIfBaremetalType`, generated headers define `USING_OS_BAREMETAL`, and neither project contains `FreeRTOSConfig.h` or kernel sources.
+- S32DS 3.6.5 includes PlatformSDK S32K3 FreeRTOS V11.1.0, the GCC Cortex-M7 `r0p1` port, and an exact `FreeRTOS_Toggle_Led_Example_S32K358`. That single-core example uses the required AMP-side settings (`configUSE_SMP = false`, `configNUMBER_OF_CORES = 1`) and is the integration reference for each image.
+- An exact NXP `FreeRTOS_SMP_Example_S32K358_2xCores` is also installed, but SMP is explicitly not the selected product architecture. It may be consulted only for applicable MCU startup details.
 
 ## User-confirmed prerequisites (2026-10-23)
 
 - The physical FRDM-A-S32K358 board is working and has already been tested by the user.
 - Basic board power-up and generic debug connectivity are accepted prerequisites and do not need to be repeated as discovery work.
-- This confirmation does not yet prove that the current `FreeRTOS_Test_SW` configuration builds, flashes, boots, or runs FreeRTOS correctly; those remain project-specific gates.
+- H0 subsequently proved that the current bare-metal images build, flash, and reach `main()` on both application cores. It does not prove FreeRTOS operation; that begins at H1A/H1B.
 
 ## Source register
 

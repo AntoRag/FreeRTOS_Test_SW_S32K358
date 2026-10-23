@@ -21,47 +21,44 @@ Hardware gate H0:
 - the project image flashes through the known-working debug path, reaches `main()`, and survives reset/reflash;
 - evidence is entered in `TEST_LOG.md`.
 
-## Phase 1 - Bare-metal observability smoke test
+## Combined Phase 1/2 - Dual-core AMP FreeRTOS and observability
 
-Objective: prove clocks, pin mux, GPIO, timing, and a host-visible output without FreeRTOS complexity.
+Objective: establish two independent FreeRTOS instances, periodic task execution on both application cores, and enough board-visible observability to make the RTOS task structure the foundation for all later peripheral tests.
 
-Work:
+Architecture:
 
-- deterministic LED color sequence using D16 or D22;
-- serial banner through LPUART6 containing protocol version, build identity, target, core, reset cause, and clock values;
-- bounded polling only; no hidden infinite waits;
-- characterize SW2/SW3 polarity and record the manual discrepancy resolution.
+- preserve the existing two projects, two `.mex` files, two linker maps, and two ELF images;
+- run a single-core FreeRTOS V11.1.0 instance in each image (`configUSE_SMP = 0`, `configNUMBER_OF_CORES = 1`);
+- `M7_0_0` owns global clock/startup policy and the initial UART control channel;
+- `M7_0_2` owns only explicitly assigned resources and never repeats global initialization;
+- keep one owner per peripheral; introduce shared-memory/MU synchronization before any cross-core shared service.
 
-Hardware gate H1:
+Staged work and evidence:
 
-- measured LED sequence and timing match expectation across three cold boots;
-- serial banner is captured without corruption;
-- each button state is observed pressed/released and polarity is recorded;
-- debugger breakpoints and peripheral/register views agree with visible behavior.
+1. **H1A - primary kernel:** attach the NXP FreeRTOS and Cortex-M7 port components to `M7_0_0`, select FreeRTOS in OSIF, generate, clean-build, flash, start the scheduler, and prove one periodic task.
+2. **H1B - secondary kernel:** repeat the same integration independently for `M7_0_2`; prove its scheduler and periodic task before simultaneous execution.
+3. **H1C - simultaneous AMP:** group-launch both images and prove both independent tick counts and task counters progress without asserts, resets, or memory overlap.
+4. **H1D - observability and worker model:** create the supervisor, heartbeat, and blocked test-worker task set on each core; use `vTaskDelayUntil()` for periodic work; assign separate LED indications and route the initial LPUART6 reporting service through `M7_0_0`.
 
-QEMU gate Q1: boot, UART banner, and GPIO-visible state sequence match the hardware trace subject to documented timing tolerance.
+Engineering work:
 
-## Phase 2 - FreeRTOS kernel baseline
+- derive configuration and interrupt-priority settings from the installed NXP S32K358 single-core example, not from generic upstream defaults;
+- prefer static task and synchronization-object allocation, with an explicitly documented exception if dynamic allocation is temporarily needed for bring-up;
+- enable `configASSERT`, stack-overflow detection, failure hooks, and task stack high-water inspection;
+- characterize SW2/SW3 polarity and record the board-manual discrepancy;
+- define a bounded startup/synchronization contract so `M7_0_2` cannot use global or shared hardware before `M7_0_0` declares it ready;
+- record per-core clock, tick, cache/MPU, stack, and linker-memory settings.
 
-Objective: prove scheduler, tick, task states, synchronization, memory policy, and failure hooks.
+Combined hardware gate H1/2:
 
-Work:
+- both independent schedulers survive repeated cold boot and a defined soak interval;
+- periodic task counts and LED/trace periods are within recorded tolerances on both cores;
+- the debugger identifies the correct task set in each ELF/session;
+- no assertion, stack overflow, unexpected reset, memory overlap, or unowned peripheral access occurs;
+- the external UART banner identifies build, physical core, RTOS version, reset cause, and clock values;
+- enabled diagnostic hooks are exercised through a safe controlled negative test.
 
-- use the exact installed kernel version and its matching port/configuration;
-- create a small fixed task set: supervisor, heartbeat, and test worker;
-- prefer static task/queue/timer allocation for determinism;
-- configure `configASSERT`, stack-overflow hook, malloc-failed hook (if dynamic allocation remains enabled), and runtime/stack diagnostics;
-- test delay-until periodicity, queue or direct notification, mutex/priority behavior, and ISR-safe API rules.
-
-Hardware gate H2:
-
-- scheduler runs for a defined soak interval with no assert/reset;
-- task periods and tick count are within recorded tolerances;
-- task communication passes known sequences;
-- stack high-water marks and heap/static-memory policy are recorded;
-- an intentional negative build or controlled fault proves each enabled diagnostic hook.
-
-QEMU gate Q2: task/event sequence matches; wall-clock timing differences are represented as explicit tolerances.
+QEMU gate Q1/2: run the same two AMP images and compare per-core task/event sequences. If the model initially supports only `M7_0_0`, record the missing secondary-core capability explicitly; a single-core run does not qualify as full AMP parity.
 
 ## Phase 3 - Versioned test harness
 
@@ -142,11 +139,11 @@ Tests: RMII link/frames and descriptors; QuadSPI HyperRAM patterns/boundaries/ca
 
 Hardware gate H10: external packet/storage evidence and memory integrity checks pass. Destructive storage tests require explicit media scope.
 
-## Phase 11 - Multicore and inter-core behavior
+## Phase 11 - Advanced inter-core communication and fault containment
 
-Objective: introduce independent `CM7_2` deliberately.
+Objective: stress the AMP architecture after both independent FreeRTOS instances are already established.
 
-Work: document boot ownership, images/linker regions, shared-memory contract, cache maintenance, SEMA42/MU/IPCF choice, interrupt routing, and failure containment. Decide whether FreeRTOS runs on one or both application cores.
+Work: finalize the shared-memory contract, cache maintenance, SEMA42/MU/IPCF choice, interrupt routing, back-pressure, malformed-message handling, timeout/recovery, and failure containment.
 
 Hardware gate H11: independent core heartbeat, deterministic message exchange, shared-memory stress, reset/restart behavior, and debugger attach are proven without corrupting the primary core.
 

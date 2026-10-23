@@ -2,11 +2,14 @@
 
 This repository contains the S32 Design Studio projects and engineering records for a FreeRTOS-based test application targeting the FRDM-A-S32K358 board. The physical board is the behavioral reference used to validate the corresponding QEMU and future ASIC models.
 
+The accepted runtime architecture is AMP: the two existing projects remain separate images, each with its own single-core FreeRTOS instance. SMP is intentionally not used. The current H0 commit is still a verified bare-metal baseline; FreeRTOS integration is staged under the combined Phase 1/2 plan in `docs/AMP_FREERTOS_ARCHITECTURE.md`.
+
 ## Repository layout
 
 - `FreeRTOS_Test_SW/FreeRTOS_Test_SW_M7_0_0/`: lockstep application-core image (`CM7_0` with `CM7_1` checker).
 - `FreeRTOS_Test_SW/FreeRTOS_Test_SW_M7_0_2/`: independent `CM7_2` image.
 - `docs/`: project context, roadmap, decisions, engineering rules, references, and test evidence.
+- `docs/AMP_FREERTOS_ARCHITECTURE.md`: accepted dual-image RTOS architecture, ownership rules, task model, and bring-up gates.
 - `AGENTS.md`: mandatory context for future Codex agents.
 
 The `.mex` files, S32DS project metadata, launch configurations, startup/linker files, generated configuration, and attached RTD/FreeMASTER sources are intentionally versioned. Managed-build output and Eclipse workspace metadata are intentionally excluded.

@@ -25,7 +25,7 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 
 ## D-003 - Initial execution core
 
-- Status: ACCEPTED
+- Status: SUPERSEDED by D-011
 - Date: 2026-10-23
 - Decision: Run the initial application on the `CM7_0` lockstep pair and keep independent `CM7_2` parked/minimal until Phase 11.
 - Reason: Lockstep is required by the project's ASIL-D objective and also reduces boot, memory-map, cache, and debug variables while establishing the test oracle.
@@ -61,7 +61,7 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 
 ## D-008 - Initial project source
 
-- Status: PROPOSED
+- Status: SUPERSEDED by D-012
 - Date: 2026-10-23
 - Decision: prefer a current NXP example matching S32K358/FRDM-A-S32K358, RTD, FreeRTOS, and available debugger; otherwise create a minimal blank project with those exact live options.
 - Reason: a board-tested example reduces startup and linker uncertainty while the user learns S32DS.
@@ -77,16 +77,33 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 
 ## D-010 - Multicore configuration ownership
 
-- Status: PROPOSED
+- Status: ACCEPTED
 - Date: 2026-10-23
 - Decision: Treat the two per-core `.mex` files as generated views of one MCU configuration. Keep one reviewed system-level source of truth for clocks, pins, peripheral ownership, and initialization order; assign every peripheral and global initialization action to exactly one core.
-- Initial ownership proposal: `CM7_0` owns boot, clocks, system/global initialization, and the first peripheral tests. `CM7_2` remains parked/minimal until a test phase explicitly assigns work to it.
+- Initial ownership: `CM7_0` owns boot, clocks, system/global initialization, and the external control/telemetry channel. `CM7_2` runs an independent FreeRTOS instance and only accesses peripherals explicitly assigned to it. Shared resources require an IPC and synchronization design before use.
 - Baseline gate: use one frozen S32DS/S32CT/RTD version, validate and regenerate both `.mex` files with that tool set, review the diff, clean-build both images, and verify the group image on the real board.
 - Compliance boundary: S32 Configuration Tools validation and a successful build establish configuration/tool consistency only. ISO 26262/ASIL claims additionally require the applicable NXP safety manual and assumptions of use, safety requirements and traceability, independent review, and recorded verification evidence.
 
+## D-011 - Dual-core AMP FreeRTOS from the first functional phase
+
+- Status: ACCEPTED
+- Date: 2026-10-23
+- Decision: Merge the former bare-metal observability and FreeRTOS-baseline phases. Run one independent, single-core FreeRTOS instance in each existing project/ELF: one on `M7_0_0` and one on `M7_0_2`. Do not use FreeRTOS SMP.
+- Configuration invariant: each kernel uses `configUSE_SMP = 0` and `configNUMBER_OF_CORES = 1`. `CM7_1` remains the lockstep checker and never hosts tasks.
+- Reason: explicit spatial/temporal ownership, fault containment, independent scheduling, and per-core peripheral responsibility fit the intended automotive validation architecture.
+- Integration policy: keep the two-image H0 baseline and introduce FreeRTOS through staged per-core hardware gates before enabling simultaneous peripheral work.
+
+## D-012 - NXP FreeRTOS integration references
+
+- Status: ACCEPTED
+- Date: 2026-10-23
+- Decision: Use the installed NXP `FreeRTOS_Toggle_Led_Example_S32K358` and the ARM Cortex-M7 `r0p1` port as the primary integration references for each AMP image. The installed S32K358 SMP example may be inspected for MCU startup details only; its scheduler architecture is not adopted.
+- Installed kernel identity: FreeRTOS `V11.1.0` under `PlatformSDK_S32K3/FreeRTOS` in S32DS 3.6.5.
+- Reason: use the exact vendor-supplied port, S32 Configuration Tools component model, interrupt integration, and version that match the installed RTD environment.
+
 ## Open decisions
 
-- Exact S32DS/RTD/FreeRTOS versions to freeze.
+- Full package/build identifiers and applicable safety documentation to freeze beyond S32DS 3.6.5, RTD 7.0.0, GCC 10.2, and FreeRTOS V11.1.0.
 - Whether FreeMASTER is useful enough to include in the baseline; it is not required for the first UART protocol.
 - Debug probe/firmware and whether onboard OpenSDA or an external PEmicro probe is the primary path.
 - Git repository boundary: entire workspace versus only source project plus documentation (recommended: exclude `.metadata` and generated build output).

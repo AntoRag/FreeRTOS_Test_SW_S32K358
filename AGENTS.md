@@ -8,7 +8,8 @@ Before doing project work, read these files in order:
 2. `docs/ROADMAP.md`
 3. `docs/ENGINEERING_RULES.md`
 4. `docs/DECISIONS.md`
-5. `docs/TEST_LOG.md`
+5. `docs/AMP_FREERTOS_ARCHITECTURE.md`
+6. `docs/TEST_LOG.md`
 
 Operating rules:
 
@@ -24,4 +25,4 @@ Operating rules:
 - Avoid coupling test logic directly to NXP-generated symbols. Use a thin board/support layer so the same test intent can run on hardware and QEMU.
 - Prefer the smallest safe step and one newly introduced variable per board experiment.
 
-Current status: planning and baseline discovery. No phase has passed yet.
+Current status: hardware gate H0 has passed. The current two-image baseline is still bare-metal. The accepted next architecture is AMP with one independent single-core FreeRTOS V11.1.0 instance per existing project/ELF; SMP is explicitly rejected. H1A integrates and proves the primary-core kernel before H1B repeats the process on the secondary core.
