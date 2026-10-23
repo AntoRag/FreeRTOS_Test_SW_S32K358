@@ -59,6 +59,7 @@ Sources are the local PDFs listed in the Source register below.
 - No FreeRTOS kernel sources or `FreeRTOSConfig.h` were found in the generated project tree at the snapshot time, despite FreeRTOS-related S32 Configuration Tools log messages. Confirm component selection and generated output before calling this a FreeRTOS project.
 - Earlier indexer summaries reported unresolved inclusions and syntax markers, but the controlled compiler builds completed with zero errors and zero warnings. Recheck the live Problems view separately; indexer markers are not compiler evidence.
 - S32 Configuration Tools logged FreeRTOS component-reference, `Port_GetNumOfPinConfig`, and SIUL2 port-setting messages. Reproduce and assess these through the live Problems/build views before changing configuration.
+- Hardware gate H0 passed on 2026-10-23: the primary image was reflashed and stopped in `main()` repeatably, and the generated `Debug_FLASH` group launch attached both `M7_0_0` and `M7_0_2` ELF sessions at their respective `main()` functions. Evidence and hashes are recorded in `docs/TEST_LOG.md`. Phase 1 will return to the lockstep application core; independent-core behavior remains reserved for deliberate multicore tests.
 
 ## User-confirmed prerequisites (2026-10-23)
 

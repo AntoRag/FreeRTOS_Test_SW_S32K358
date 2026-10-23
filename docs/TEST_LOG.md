@@ -1,6 +1,6 @@
 # Hardware and Model Test Log
 
-No phase gate has passed yet. The build-only evidence below does not by itself qualify a hardware-backed phase gate.
+Hardware gate H0 passed on 2026-10-23. Later phase gates remain unexecuted.
 
 User-provided prerequisite: the FRDM-A-S32K358 board is known working and has already been tested. This is accepted as board-health context, not as a pass result for any project-specific phase gate.
 
@@ -72,6 +72,30 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Deviations/issues | The screenshot was captured after resume and the TAD log does not record source locations, so `exit_code == 0`, reset/reflash repeatability, and the `M7_0_2` group session remain unproven. S32DS migrated the core-0 launch schema and persisted the working `USB1` probe selection. |
 | Follow-up | Suspend and inspect the primary core; restart and confirm stop at `main()`; then exercise the generated `Debug_FLASH` group launch |
 
+### RUN-20261023-002 - H0-B multicore group launch
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-23 20:20-20:21 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Onboard PEmicro/OpenSDA path selected as `USB1`; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | `8d06720` documentation state; firmware artifacts from clean build `BUILD-20261023-002` |
+| Core(s) | `M7_0_0` application core with `CM7_1` lockstep checker, plus independent `M7_0_2` |
+| Test ID(s) | `H0-B` |
+| Procedure/command | Launch `FreeRTOS_Test_SW_Debug_FLASH_PNE_group`; allow both generated PEmicro child launches to connect and stop |
+| Expected result/tolerance | Both ELF images are associated with their intended cores and both debugger sessions stop in their respective `main()` functions without attach/reset/flash errors |
+| Actual result | Group launch created `FreeRTOS_Test_SW_M7_0_0.elf` and `FreeRTOS_Test_SW_M7_0_2.elf` sessions. Both `Thread #1` entries were suspended in `main()` after stepping, at `0x0040265e` and `0x00700602` respectively. TAD logs record both DSF sessions and normal termination. The operator had also repeated the primary-core flash/reset/halt check successfully immediately before this run. |
+| Outcome | `PASS` |
+| Evidence paths | `evidence/H0/2026-10-23/multicore-group-halted-at-main.png` (SHA-256 `4228FABBC16B087EDF247945F73C0241C6A06290C9D4CF5BB7585A2047B5E45D`); `multicore-group-tad-main.log` (SHA-256 `A88F92EF1DA8ABB8BCA2B636DD20D0303FF5292B31F7486E12F5D68AC4929DC3`); `multicore-group-tad-secondary-end.log` (SHA-256 `C8A8224B662C96196AB2A3FF39FBBC5C0322189A2216827E94050F3F121CB0B3`) |
+| Deviations/issues | Exact board PCB revision and probe firmware version remain to be recorded. Build warnings from `BUILD-20261023-002` remain open for remediation, but no compiler/linker errors or runtime-debug failure occurred. |
+| Follow-up | Begin Phase 1 on the lockstep application core; keep `M7_0_2` parked except when deliberately testing multicore behavior. |
+
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
 ## Run template
@@ -121,7 +145,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
-| H0 Reproducible baseline | IN PROGRESS | RUN-20261023-001 | Primary-core connect/flash/run smoke passes; halt/reset repeatability and multicore group launch remain |
+| H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
 | H1 Bare-metal observability | PLANNED | - | |
 | H2 FreeRTOS baseline | PLANNED | - | |
 | H3 Test harness | PLANNED | - | |
