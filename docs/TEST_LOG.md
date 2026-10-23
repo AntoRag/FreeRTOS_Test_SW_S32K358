@@ -46,6 +46,32 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Outcome | PASS for clean artifact generation; warning disposition OPEN; hardware gate not exercised |
 | Follow-up | Preserve full logs for both cores on the next clean qualification build; investigate warning remediation without editing generated or SDK-owned sources; flash and debug both images on the board. |
 
+## Hardware evidence
+
+### RUN-20261023-001 - H0-A primary-core debug smoke
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-23 20:16 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Onboard PEmicro/OpenSDA path selected as `USB1`; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | `c860dee` documentation state; firmware artifacts from clean build `BUILD-20261023-002` |
+| Core(s) | `M7_0_0` application core with `CM7_1` lockstep checker |
+| Test ID(s) | `H0-A` |
+| Procedure/command | Launch `FreeRTOS_Test_SW_M7_0_0_Debug_FLASH_PNE`, then run the generated placeholder application |
+| Expected result/tolerance | PEmicro connects, reset/startup script completes, application reaches `main()`, and the core runs the intentional infinite loop |
+| Actual result | PEmicro debug session active; DAP successfully powered; reset script completed without a visible error; Debug view reports `Thread #1 (Running : User Request)` and the source/disassembly views identify the loop in `main()` |
+| Outcome | `PASS` for primary-core connect/flash/run smoke only |
+| Evidence paths | `evidence/H0/2026-10-23/core0-running-main-loop.png`; SHA-256 `B4F8682A2DF765C9423F37A9405BE69E51D4FF541498DD03DD195502BBB4C060` |
+| Deviations/issues | Screenshot was captured after resume, so halted-at-`main`, `exit_code == 0`, reset/reflash repeatability, and the `M7_0_2` group session remain unproven. S32DS migrated the core-0 launch schema and persisted the working `USB1` probe selection. |
+| Follow-up | Suspend and inspect the primary core; restart and confirm stop at `main()`; then exercise the generated `Debug_FLASH` group launch |
+
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
 ## Run template
@@ -95,7 +121,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
-| H0 Reproducible baseline | IN PROGRESS | BUILD-20261023-002 | Clean artifacts produced with zero errors; warnings reviewed but not yet dispositioned; board execution remains |
+| H0 Reproducible baseline | IN PROGRESS | RUN-20261023-001 | Primary-core connect/flash/run smoke passes; halt/reset repeatability and multicore group launch remain |
 | H1 Bare-metal observability | PLANNED | - | |
 | H2 FreeRTOS baseline | PLANNED | - | |
 | H3 Test harness | PLANNED | - | |
