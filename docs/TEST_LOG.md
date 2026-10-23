@@ -66,10 +66,10 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Test ID(s) | `H0-A` |
 | Procedure/command | Launch `FreeRTOS_Test_SW_M7_0_0_Debug_FLASH_PNE`, then run the generated placeholder application |
 | Expected result/tolerance | PEmicro connects, reset/startup script completes, application reaches `main()`, and the core runs the intentional infinite loop |
-| Actual result | PEmicro debug session active; DAP successfully powered; reset script completed without a visible error; Debug view reports `Thread #1 (Running : User Request)` and the source/disassembly views identify the loop in `main()` |
+| Actual result | PEmicro debug session active; DAP successfully powered; reset script completed without a visible error; Debug view reports `Thread #1 (Running : User Request)` and the source/disassembly views identify the loop in `main()`. The TAD session log records a breakpoint hit, multiple step/resume transitions, and normal session termination. |
 | Outcome | `PASS` for primary-core connect/flash/run smoke only |
-| Evidence paths | `evidence/H0/2026-10-23/core0-running-main-loop.png`; SHA-256 `B4F8682A2DF765C9423F37A9405BE69E51D4FF541498DD03DD195502BBB4C060` |
-| Deviations/issues | Screenshot was captured after resume, so halted-at-`main`, `exit_code == 0`, reset/reflash repeatability, and the `M7_0_2` group session remain unproven. S32DS migrated the core-0 launch schema and persisted the working `USB1` probe selection. |
+| Evidence paths | `evidence/H0/2026-10-23/core0-running-main-loop.png` (SHA-256 `B4F8682A2DF765C9423F37A9405BE69E51D4FF541498DD03DD195502BBB4C060`); `evidence/H0/2026-10-23/core0-debug-session-tad.log` (SHA-256 `108E705C8A5AD92D2AAA7301F1C58AC3BB5B419CF9E4D5ECC2AE746CDE1591A7`) |
+| Deviations/issues | The screenshot was captured after resume and the TAD log does not record source locations, so `exit_code == 0`, reset/reflash repeatability, and the `M7_0_2` group session remain unproven. S32DS migrated the core-0 launch schema and persisted the working `USB1` probe selection. |
 | Follow-up | Suspend and inspect the primary core; restart and confirm stop at `main()`; then exercise the generated `Debug_FLASH` group launch |
 
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.

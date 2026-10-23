@@ -3,6 +3,10 @@
 /RemoteSystemsTempFiles/
 /.s32ds_packages_support/
 
+# Task-aware debugger runtime logs; milestone copies belong under evidence/
+/FreeRTOS_TAD_logs/
+/ZephyrRTOS_TAD_logs/
+
 # Managed-build output directories. Keep Project_Settings/Debugger tracked.
 **/Debug/
 **/Release/
