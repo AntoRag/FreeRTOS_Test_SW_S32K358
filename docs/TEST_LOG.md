@@ -177,6 +177,33 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Deviations/issues | The smoke test still uses dynamic heap-1. Application-source style cleanup is required before its checkpoint. Failure hooks, stack-overflow detection, STM release, FreeRTOS MPU isolation, and CM7_2 scheduling remain untested. |
 | Follow-up | Clean the CM7_0 smoke-test source, rebuild without warnings/errors, checkpoint it, then configure the first STM0 compare interrupt. |
 
+### RUN-20261024-004 - H1A CM7_0 diagnostic hooks
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Based on scheduler-smoke checkpoint `a3a07ea`; resulting hook checkpoint records the exact configuration |
+| Core(s) | Hooks under test on `M7_0_0`; `M7_0_2` remains in its placeholder loop |
+| Cache/MPU state | Startup MPU enabled; FreeRTOS task MPU disabled |
+| Test ID(s) | `H1A-HOOKS` |
+| Preconditions | `RUN-20261024-003` passed |
+| Procedure/command | Enable Idle hook, malloc-failure hook, and stack-overflow Method 2 in the CM7_0 FreeRTOS configuration; keep Tick hook disabled; regenerate/build; run the multicore group; suspend CM7_0 at multiple times and inspect task, fatal, Idle, and tick counters |
+| Expected result/tolerance | Idle and tick counters advance; the notification-blocked task remains started but unreleased/unexecuted; fatal state remains zero; no linker error, fault, assertion, or unexpected reset occurs |
+| Actual result | Across debugger snapshots, `xTickCount` advanced from 345 to 353 and then 1058; `g_Core0IdleIterationCount` advanced from 2,298,412 to 2,354,420 and then 7,049,724. `Started` remained 1, release/execution counters remained 0, the handle remained non-null, and `FatalError` remained 0. |
+| Outcome | `PASS` for Idle-hook operation and normal-path integration of the configured diagnostic hooks |
+| Evidence paths | `evidence/H1/2026-10-24/cm7-0-hooks-tick-0345.png` (SHA-256 `F5FBBC55D490C192C212661303F55BAEA6CAC4BFE37160485DEF59F5A9248434`); `cm7-0-hooks-tick-0353.png` (SHA-256 `8FE726D1D74E05B6D5FD69D43D876DB03CED10E6F14FAE197A85268D9A0B89B1`); `cm7-0-hooks-tick-1058.png` (SHA-256 `630B7F006FE2722ED26E8FD2B53AF52E505968283C1323DB6F58850E621CD7B0`) |
+| Deviations/issues | Malloc-failure and stack-overflow hooks were linked but not deliberately triggered. Dynamic heap-1 remains a bring-up exception. |
+| Follow-up | Checkpoint the hook configuration, then configure the first CM7_0 STM compare channel for a 10 ms task release. |
+
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
 ## Run template
@@ -227,7 +254,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
 | H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
-| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-003 | CM7_0 scheduler/task-blocking/tick/Idle smoke passed; source cleanup, hooks, FreeRTOS MPU gate, STM release, CM7_2 scheduling, and simultaneous AMP task execution remain open |
+| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-004 | CM7_0 scheduler and Idle/diagnostic-hook normal path passed; negative-hook tests, FreeRTOS MPU gate, STM release, CM7_2 scheduling, and simultaneous AMP task execution remain open |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
 | H5 Timers/timebase | PLANNED | - | |

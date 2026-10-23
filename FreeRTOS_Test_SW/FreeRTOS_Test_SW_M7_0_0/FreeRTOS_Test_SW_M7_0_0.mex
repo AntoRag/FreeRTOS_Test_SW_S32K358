@@ -553,10 +553,10 @@
                            <setting name="configUSE_PASSIVE_IDLE_HOOK" value="false"/>
                         </struct>
                         <struct name="hook_tab">
-                           <setting name="configUSE_IDLE_HOOK" value="false"/>
+                           <setting name="configUSE_IDLE_HOOK" value="true"/>
                            <setting name="configUSE_TICK_HOOK" value="false"/>
-                           <setting name="configUSE_MALLOC_FAILED_HOOK" value="false"/>
-                           <setting name="configCHECK_FOR_STACK_OVERFLOW" value="0"/>
+                           <setting name="configUSE_MALLOC_FAILED_HOOK" value="true"/>
+                           <setting name="configCHECK_FOR_STACK_OVERFLOW" value="2"/>
                            <setting name="configUSE_DAEMON_TASK_STARTUP_HOOK" value="false"/>
                         </struct>
                         <struct name="rttsgrd_tab">

@@ -48,14 +48,55 @@ extern "C"{
 #define APP_FATAL_NONE               (0U)
 #define APP_FATAL_TASK_CREATE        (1U)
 #define APP_FATAL_SCHEDULER_RETURNED (2U)
+#define APP_FATAL_MALLOC_FAILED       (3U)
+#define APP_FATAL_STACK_OVERFLOW      (4U)
 
 static TaskHandle_t s_Core0TaskA10msHandle = NULL;
 
+volatile uint32_t g_Core0IdleIterationCount = 0U;
 volatile uint32_t g_Core0TaskA10msStarted        = 0U;
 volatile uint32_t g_Core0TaskA10msReleaseCount   = 0U;
 volatile uint32_t g_Core0TaskA10msExecutionCount = 0U;
 volatile uint32_t g_Core0FatalError              = APP_FATAL_NONE;
 
+/* vApplicationIdleHook() is our background activity. It must never block. */
+void vApplicationIdleHook(void)
+{
+    g_Core0IdleIterationCount++;
+}
+
+
+/* vApplicationMallocFailedHook() captures failures from the temporary dynamic-allocation configuration. */
+void vApplicationMallocFailedHook(void)
+{
+    g_Core0FatalError = APP_FATAL_MALLOC_FAILED;
+
+    taskDISABLE_INTERRUPTS();
+
+    for (;;)
+    {
+        /* Fatal error: FreeRTOS heap allocation failed. */
+    }
+}
+
+/*vApplicationStackOverflowHook() captures stack corruption detected during context switching*/
+void vApplicationStackOverflowHook(
+    TaskHandle_t taskHandle,
+    char *taskName
+)
+{
+    (void)taskHandle;
+    (void)taskName;
+
+    g_Core0FatalError = APP_FATAL_STACK_OVERFLOW;
+
+    taskDISABLE_INTERRUPTS();
+
+    for (;;)
+    {
+        /* Fatal error: task stack corruption detected. */
+    }
+}
 
 /* Initial task used to validate notification blocking. */
 static void App_TaskA10ms(void *pvParameters)
