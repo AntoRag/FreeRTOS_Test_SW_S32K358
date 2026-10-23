@@ -62,12 +62,12 @@ The task model supports more than one independent task at the same period. For e
 
 The minimum H1D proof set on each core is:
 
-- `TaskA_10ms` and `TaskB_10ms`, proving that same-rate activities are independent;
-- `TaskA_100ms`;
-- `TaskA_1000ms`;
+- `TaskA_10ms` and `TaskB_10ms`;
+- `TaskA_100ms` and `TaskB_100ms`;
+- `TaskA_1000ms` and `TaskB_1000ms`;
 - the kernel Idle task with a per-core Idle-hook counter.
 
-Debugger-visible task names include physical core identity, for example `C0_TaskA_10ms`, `C0_TaskB_10ms`, and the corresponding `C2_...` names. The configured `configMAX_TASK_NAME_LEN` must be checked before these strings are frozen. Source-level functions use module prefixes and functional names; generic `TaskA`/`TaskB` identifiers are bring-up names and are replaced by purpose-specific names when a task receives a permanent peripheral-test role.
+This six-task set proves same-rate independence in every rate class. Debugger-visible task names include physical core identity, for example `C0_TaskA_10ms`, `C0_TaskB_10ms`, and the corresponding `C2_...` names. The configured `configMAX_TASK_NAME_LEN` must be checked before these strings are frozen. Source-level functions use module prefixes and functional names; generic `TaskA`/`TaskB` identifiers are bring-up names and are replaced by purpose-specific names when a task receives a permanent peripheral-test role.
 
 Prefer static allocation. Each task has separate file-static TCB and stack storage, for example `s_taskA10msTcb` and `s_taskA10msStack`. Period constants include units, such as `APP_TASK_PERIOD_10_MS`, and are converted using `pdMS_TO_TICKS()`. Each task maintains at least a release counter, deadline-miss counter, last execution time, and maximum execution time. Measurements from the two independent RTOS ticks are not assumed to be phase-aligned across cores.
 

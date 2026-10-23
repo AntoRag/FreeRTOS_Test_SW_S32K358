@@ -63,7 +63,7 @@ Sources are the local PDFs listed in the Source register below.
 - Despite their names, the current H0 projects are bare-metal: both `.mex` files select `OsIfBaremetalType`, generated headers define `USING_OS_BAREMETAL`, and neither project contains `FreeRTOSConfig.h` or kernel sources.
 - S32DS 3.6.5 includes PlatformSDK S32K3 FreeRTOS V11.1.0, the GCC Cortex-M7 `r0p1` port, and an exact `FreeRTOS_Toggle_Led_Example_S32K358`. That single-core example uses the required AMP-side settings (`configUSE_SMP = false`, `configNUMBER_OF_CORES = 1`) and is the integration reference for each image.
 - An exact NXP `FreeRTOS_SMP_Example_S32K358_2xCores` is also installed, but SMP is explicitly not the selected product architecture. It may be consulted only for applicable MCU startup details.
-- The accepted baseline scheduling model uses independent application tasks in 10 ms, 100 ms, and 1000 ms rate classes on each FreeRTOS instance. Multiple tasks may share a period but never share timing state or rely on execution order. Each kernel's Idle task/Idle hook supplies strictly bounded, non-blocking background activity; there is no separate baseline background task.
+- The accepted baseline scheduling model uses six independent application tasks on each FreeRTOS instance: A and B tasks in each 10 ms, 100 ms, and 1000 ms rate class. Tasks never share timing state or rely on same-priority execution order. Each kernel's Idle task/Idle hook supplies strictly bounded, non-blocking background activity; there is no separate baseline background task.
 
 ## User-confirmed prerequisites (2026-10-23)
 

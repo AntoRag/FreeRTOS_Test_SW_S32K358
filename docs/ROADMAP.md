@@ -38,7 +38,7 @@ Staged work and evidence:
 1. **H1A - primary kernel:** attach the NXP FreeRTOS and Cortex-M7 port components to `M7_0_0`, select FreeRTOS in OSIF, generate, clean-build, flash, start the scheduler, and prove one periodic task.
 2. **H1B - secondary kernel:** repeat the same integration independently for `M7_0_2`; prove its scheduler and periodic task before simultaneous execution.
 3. **H1C - simultaneous AMP:** group-launch both images and prove both independent tick counts and task counters progress without asserts, resets, or memory overlap.
-4. **H1D - independent timing-task model:** on each core create independent 10 ms, 100 ms, and 1000 ms tasks, including two separate 10 ms tasks to prove same-rate independence; use each kernel's Idle task/Idle hook for bounded background activity; assign separate LED/trace indications and route the initial LPUART6 reporting service through `M7_0_0`.
+4. **H1D - independent timing-task model:** on each core create separate A and B tasks at 10 ms, 100 ms, and 1000 ms, for six independent periodic tasks per core; use each kernel's Idle task/Idle hook for bounded background activity; assign separate LED/trace indications and route the initial LPUART6 reporting service through `M7_0_0`.
 
 Engineering work:
 
