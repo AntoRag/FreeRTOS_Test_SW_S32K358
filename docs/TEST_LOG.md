@@ -1,8 +1,30 @@
 # Hardware and Model Test Log
 
-No phase or test has passed yet.
+No phase gate has passed yet. The build-only evidence below does not by itself qualify a hardware-backed phase gate.
 
 User-provided prerequisite: the FRDM-A-S32K358 board is known working and has already been tested. This is accepted as board-health context, not as a pass result for any project-specific phase gate.
+
+## Build evidence
+
+### BUILD-20261023-001 - Controlled per-core Update Code and Build
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-23 20:05 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | Host build only |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH`, incremental |
+| Baseline Git commit | `028cc8c0657381f1ebf2f29e72cf44b0cddceca9` |
+| Projects | `FreeRTOS_Test_SW_M7_0_0`, `FreeRTOS_Test_SW_M7_0_2` |
+| Procedure | Select each project; execute **Update Code and Build** |
+| Core 0 result | 0 errors, 0 warnings; text 44,088; data 260; bss 10,376; total 54,724 bytes |
+| Core 2 result | 0 errors, 0 warnings; text 35,808; data 260; bss 10,376; total 46,444 bytes |
+| Configuration result | Both `.mex` files use Clocks tool 19.0 and differ only by intended core-assignment fields |
+| Outcome | PASS (incremental host build only) |
+| Limitations | Not a clean rebuild; no flash, boot, debugger, or real-board evidence yet |
 
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
@@ -53,7 +75,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
-| H0 Reproducible baseline | PLANNED | - | |
+| H0 Reproducible baseline | IN PROGRESS | BUILD-20261023-001 | Incremental builds pass; clean rebuild and board execution remain |
 | H1 Bare-metal observability | PLANNED | - | |
 | H2 FreeRTOS baseline | PLANNED | - | |
 | H3 Test harness | PLANNED | - | |

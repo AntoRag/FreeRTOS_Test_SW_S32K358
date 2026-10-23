@@ -21,7 +21,7 @@ The initial generated project currently identifies the following toolchain. Conf
 - FreeMASTER SDK: `1.5.0`
 - Target: `S32K358`, package `289BGA`
 
-The two current `.mex` files report different internal Clocks-tool revisions. This is an open baseline issue documented in `docs/PROJECT_CONTEXT.md` and must be normalized through a controlled **Update Code and Build** cycle.
+After the controlled **Update Code and Build** cycle on 2026-10-23, both `.mex` files report Clocks tool `19.0`. Their remaining differences are the intentional selected-core and functional-group ownership fields.
 
 ## Recreating the workspace after cloning
 
