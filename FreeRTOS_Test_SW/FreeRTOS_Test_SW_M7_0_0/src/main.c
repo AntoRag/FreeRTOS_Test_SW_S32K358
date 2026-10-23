@@ -35,31 +35,83 @@ extern "C"{
 /* Including necessary configuration files. */
 #include "Mcal.h"
 
-volatile int exit_code = 0;
-/* User includes */
 
-/*!
-  \brief The main function for the project.
-  \details The startup initialization sequence is the following:
- * - startup asm routine
- * - main()
-*/
+/* FreeRTOS kernel interfaces. */
+#include "FreeRTOS.h"
+#include "task.h"
+#include <stdint.h>
+
+/* Scheduler-smoke configuration. */
+#define APP_TASK_10MS_PRIORITY       (tskIDLE_PRIORITY + 3U)
+#define APP_TASK_10MS_STACK_DEPTH    (256U)
+
+#define APP_FATAL_NONE               (0U)
+#define APP_FATAL_TASK_CREATE        (1U)
+#define APP_FATAL_SCHEDULER_RETURNED (2U)
+
+static TaskHandle_t s_Core0TaskA10msHandle = NULL;
+
+volatile uint32_t g_Core0TaskA10msStarted        = 0U;
+volatile uint32_t g_Core0TaskA10msReleaseCount   = 0U;
+volatile uint32_t g_Core0TaskA10msExecutionCount = 0U;
+volatile uint32_t g_Core0FatalError              = APP_FATAL_NONE;
+
+
+/* Initial task used to validate notification blocking. */
+static void App_TaskA10ms(void *pvParameters)
+{
+    uint32_t notificationCount;
+
+    (void)pvParameters;
+
+    g_Core0TaskA10msStarted = 1U;
+
+    for (;;)
+    {
+        notificationCount = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+        g_Core0TaskA10msReleaseCount += notificationCount;
+        g_Core0TaskA10msExecutionCount++;
+    }
+}
+
+
 int main(void)
 {
-    /* Write your code here */
+    BaseType_t taskCreateResult;
 
-    for(;;)
+    taskCreateResult = xTaskCreate(
+		App_TaskA10ms,
+			"C0_TaskA10ms",
+			APP_TASK_10MS_STACK_DEPTH,
+			NULL, APP_TASK_10MS_PRIORITY,
+			&s_Core0TaskA10msHandle
+			);
+
+    if (taskCreateResult != pdPASS)
     {
-        if(exit_code != 0)
+		g_Core0FatalError = APP_FATAL_TASK_CREATE;
+        for(;;)
         {
-            break;
+			/* Task creation failed, inspect g_Core0FatalError */
         }
     }
-    return exit_code;
+
+    vTaskStartScheduler();
+
+    /*
+    * A correctly started scheduler never returns.
+    * Reaching this point is always an error.
+    */
+    g_Core0FatalError = APP_FATAL_SCHEDULER_RETURNED;
+
+    for (;;)
+    {
+        /* Fatal state. */
+    }
+
 }
 
 #ifdef __cplusplus
 }
 #endif
-
-/** @} */

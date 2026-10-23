@@ -150,6 +150,33 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Deviations/issues | Dynamic heap-1 remains a documented bring-up exception. Scheduler execution, hooks, STM notification, task-level MPU isolation, and simultaneous task execution remain untested. |
 | Follow-up | Commit the secondary-core integration, then start the scheduler-smoke implementation on `M7_0_0` only. |
 
+### RUN-20261024-003 - H1A CM7_0 scheduler smoke
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Based on dual-kernel integration checkpoint `b5ec462`; scheduler-smoke source pending cleanup/checkpoint |
+| Core(s) | Scheduler under test on `M7_0_0`; `M7_0_2` remains in its placeholder loop; `CM7_1` remains the lockstep checker |
+| Cache/MPU state | Startup MPU enabled; FreeRTOS task MPU disabled |
+| Test ID(s) | `H1A-SCHED-SMOKE` |
+| Preconditions | `RUN-20261024-002` passed; both independent FreeRTOS components build and pass startup regression |
+| Procedure/command | Create one priority-3 CM7_0 task with a 256-word stack; start the scheduler; record task entry; block indefinitely using `ulTaskNotifyTake(pdTRUE, portMAX_DELAY)`; observe counters, handle, tick count, Idle/task state, and fault status in the debugger |
+| Expected result/tolerance | Task starts exactly once and blocks without notification; release/execution counters stay zero; task handle is non-null; kernel tick advances; Idle remains available; scheduler does not return; no exception or assertion occurs |
+| Actual result | Debugger observation showed `Started=1`, `ReleaseCount=0`, `ExecutionCount=0`, `FatalError=0`, a non-null task handle, and `xTickCount=1565`. The operator subsequently confirmed the blocked-task/Idle behavior appeared to work and reported no error. |
+| Outcome | `PASS` for CM7_0 scheduler startup, first dispatch, notification blocking, tick progression, and Idle availability |
+| Evidence paths | `evidence/H1/2026-10-24/cm7-0-scheduler-smoke-expressions.png` (SHA-256 `B3DD6FC5AEAC5C2C5D9FB30D772FD48111B20F23FC37AA89E682DD5BB78935DE`) |
+| Deviations/issues | The smoke test still uses dynamic heap-1. Application-source style cleanup is required before its checkpoint. Failure hooks, stack-overflow detection, STM release, FreeRTOS MPU isolation, and CM7_2 scheduling remain untested. |
+| Follow-up | Clean the CM7_0 smoke-test source, rebuild without warnings/errors, checkpoint it, then configure the first STM0 compare interrupt. |
+
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
 ## Run template
@@ -200,7 +227,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
 | H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
-| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-002 | Both kernel components link and pass multicore startup regression; scheduler execution, hooks, FreeRTOS MPU gate, STM release, and simultaneous AMP task execution remain open |
+| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-003 | CM7_0 scheduler/task-blocking/tick/Idle smoke passed; source cleanup, hooks, FreeRTOS MPU gate, STM release, CM7_2 scheduling, and simultaneous AMP task execution remain open |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
 | H5 Timers/timebase | PLANNED | - | |
