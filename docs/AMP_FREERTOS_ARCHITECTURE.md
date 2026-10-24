@@ -45,6 +45,23 @@ Do not copy kernel files or invent port settings manually. Add the matching SDK 
 5. Shared RAM is not ordinary shared state. Its layout, cache attributes, barriers, integrity fields, and producer/consumer protocol must be specified before use.
 6. FreeMASTER, if retained, is initially hosted only by `M7_0_0`; two cores must not contend for one transport.
 
+## Startup and initialization ownership
+
+The AMP system has one boot coordinator but two application-initialization paths. `CM7_0` is the only core allowed to perform system-global initialization. `CM7_2` remains held or waits at a bounded `SYSTEM_READY` barrier and must not touch a clocked peripheral before the global state is ready.
+
+The target sequence is:
+
+1. `CM7_0` performs reset/startup processing and primary memory initialization.
+2. `CM7_0` performs `Bsp_SystemInit()`: system clock/PLL setup, global clock distribution, and other explicitly assigned shared configuration.
+3. `CM7_0` performs its `Bsp_CoreInit()`: local vector-table/NVIC configuration and other core-local setup.
+4. `CM7_0` initializes its owned `STM_0`, creates the `TaskA` set, publishes `SYSTEM_READY`, and releases or permits `CM7_2` to proceed.
+5. `CM7_2` observes `SYSTEM_READY`, performs its own `Bsp_CoreInit()`, initializes only its assigned STM/peripherals, and creates the `TaskB` set.
+6. Each image starts its own single-core FreeRTOS scheduler and enters independent application execution.
+
+`Clock_Ip_Init()` belongs to the primary-only system path because it programs global clock hardware. `IntCtrl_Ip_Init()` belongs to each core-local path because each Cortex-M7 application core controls its own NVIC/vector context. `Stm_Ip_Init()` is called once by the owner of the selected physical STM instance; another image must not reinitialize that same instance.
+
+During bring-up, the debugger group launch may prepare or release both cores. That convenience is not accepted as the standalone boot protocol: `CM7_2` must still use the explicit readiness barrier so the same ordering works after cold boot and under QEMU. The barrier transport, cache attributes, timeout, and failure response are not yet frozen.
+
 ## Initial task model
 
 Each periodic activity is an independent FreeRTOS task. There is no shared cyclic task that executes all 10 ms, 100 ms, or 1000 ms work. Each task owns its own state, stack, activation notification, execution counter, and test responsibility.

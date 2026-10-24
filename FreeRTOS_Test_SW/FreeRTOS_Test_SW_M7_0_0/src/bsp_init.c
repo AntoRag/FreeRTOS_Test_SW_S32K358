@@ -16,10 +16,9 @@
 #include "IntCtrl_Ip.h"
 #include "IntCtrl_Ip_Cfg.h"
 
-BspInitStatusType Bsp_Init(void)
+BspInitStatusType Bsp_SystemInit(void)
 {
     Clock_Ip_StatusType clockStatus;
-    IntCtrl_Ip_StatusType interruptStatus;
 
     clockStatus = Clock_Ip_Init(&Clock_Ip_aClockConfig[0]);
 
@@ -27,6 +26,13 @@ BspInitStatusType Bsp_Init(void)
     {
         return BSP_INIT_CLOCK_FAILURE;
     }
+
+    return BSP_INIT_SUCCESS;
+}
+
+BspInitStatusType Bsp_CoreInit(void)
+{
+    IntCtrl_Ip_StatusType interruptStatus;
 
     interruptStatus = IntCtrl_Ip_Init(&IntCtrlConfig_0);
 
@@ -37,4 +43,3 @@ BspInitStatusType Bsp_Init(void)
 
     return BSP_INIT_SUCCESS;
 }
-

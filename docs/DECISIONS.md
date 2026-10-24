@@ -144,6 +144,18 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Scope rule: the inventory is the union of both AMP images and does not carry a core-ownership field; a module required by either image is a requirement for the device model.
 - Maintenance rule: update the inventory whenever software development introduces or removes a hardware dependency. Real-board and QEMU outcomes remain in `TEST_LOG.md`, not in the inventory.
 
+## D-017 - CM7_0 boot coordination and split initialization ownership
+
+- Status: ACCEPTED
+- Date: 2026-10-24
+- Decision: `CM7_0` in image `M7_0_0` is the boot coordinator and the sole executor of system-global initialization. `CM7_2` in image `M7_0_2` must remain held or wait at a bounded software barrier until `CM7_0` declares global initialization complete. After that release, both images enter their independent application initialization and start their own FreeRTOS schedulers.
+- Global initialization ownership: only `CM7_0` configures the system clock tree/PLL, global mode and clock distribution, shared pin/routing state, shared-resource ownership, and the eventual standalone release/start address of `CM7_2`. A global hardware configuration API must not be called independently by both images merely because both projects contain a generated driver copy.
+- Core-local initialization: each executing application core initializes its own vector-table/NVIC state, FreeRTOS kernel objects, tasks, diagnostics, and exclusively owned peripheral instances. Consequently `IntCtrl_Ip_Init()` remains a per-core call with a per-core configuration, while `Clock_Ip_Init()` is a `CM7_0`-only system call.
+- Peripheral rule: each physical peripheral instance has exactly one initialization owner. The proven primary timebase is `STM_0` owned by `CM7_0`; the exact dedicated STM instance for `CM7_2` remains `Proposed` until S32 Configuration Tools validates its ownership, interrupt route, and clock.
+- Debug boundary: a debugger group launch may currently start or prepare both cores, but it is not the production boot contract. If the debugger releases `CM7_2` before `CM7_0` is ready, the secondary image must still wait at the same software readiness barrier used by hardware and QEMU.
+- Interface direction: separate the current board initialization into a primary-only system layer (for example `Bsp_SystemInit()`) and a per-image local layer (for example `Bsp_CoreInit()`). The exact readiness transport, timeout, shared-memory/cache attributes, and failure reaction remain open and must be decided before `TaskB` uses clocked peripherals.
+- Reason: this matches automotive master/worker startup practice, prevents concurrent or repeated programming of global registers, preserves independent AMP application execution, and gives hardware and QEMU one deterministic startup sequence to compare.
+
 ## Open decisions
 
 - Full package/build identifiers and applicable safety documentation to freeze beyond S32DS 3.6.5, RTD 7.0.0, GCC 10.2, and FreeRTOS V11.1.0.
@@ -152,4 +164,5 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Coding standard target (project convention only, MISRA-oriented, or formal MISRA compliance).
 - Host-runner language and artifact format.
 - Required QEMU machine/core configuration and currently implemented peripherals.
+- CM7_0-to-CM7_2 `SYSTEM_READY` transport, timeout, cache-safe storage, and failure reaction.
 - Available lab equipment: oscilloscope/logic analyzer, CAN interface, LIN interface, Ethernet peer, loopback wiring, and SD card.

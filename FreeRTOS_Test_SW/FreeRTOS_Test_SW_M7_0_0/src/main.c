@@ -58,27 +58,35 @@ static void App_Halt(void)
 int main(void)
 {
 
-	/* Initialize BPS (Clock + Interrupts) */
+    /*
+     * Primary-core-only system initialization.
+     */
 	BspInitStatusType bspStatus;
 
-	bspStatus = Bsp_Init();
+	bspStatus = Bsp_SystemInit();
 
-	switch (bspStatus)
-	{
-	case BSP_INIT_CLOCK_FAILURE:
-		AppFault_Set(APP_FATAL_CLOCK_INIT);
-		App_Halt();
-		break;
-	case BSP_INIT_INTERRUPT_FAILURE:
-		AppFault_Set(APP_FATAL_INTERRUPT_INIT);
-		App_Halt();
-		break;
-	case BSP_INIT_SUCCESS:
-	default:
-		AppFault_Set(APP_FATAL_NONE);
-		break;
-	}
 
+    if (bspStatus != BSP_INIT_SUCCESS)
+    {
+        AppFault_Set(APP_FATAL_CLOCK_INIT);
+        App_Halt();
+    }
+
+    /*
+     * Initialization local to CM7_0.
+     */
+    bspStatus = Bsp_CoreInit();
+    if (bspStatus != BSP_INIT_SUCCESS)
+    {
+        AppFault_Set(APP_FATAL_INTERRUPT_INIT);
+        App_Halt();
+    }
+
+    AppFault_Set(APP_FATAL_NONE);
+
+    /*
+     * CM7_0-owned application resources.
+     */
     /* Initialise timebase + create task(s) */
 	BspTimebase_Init();
 

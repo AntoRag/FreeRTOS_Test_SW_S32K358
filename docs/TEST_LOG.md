@@ -316,6 +316,34 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Deviations/issues | After the captured hardware run, the three release APIs received the final symbol-only capitalization correction from `...FromIsr` to the accepted `...FromISR` convention. Static inspection confirmed that declarations, definitions, and callers agree and that no stale `FromIsr` symbol remains. The operator subsequently confirmed a successful rebuild. A clean-build console log was not archived. |
 | Follow-up | Checkpoint the CM7_0 task set, then begin the independent CM7_2 `TaskB` implementation. |
 
+### RUN-20261024-009 - H1A global/core-local initialization split
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Initialization-split working tree based on `175cd4b`; checkpoint pending |
+| Core(s) | `M7_0_0`; `M7_0_2` application remains unchanged |
+| Clock configuration | FreeRTOS tick 1 kHz; `STM_0` counter 1 MHz; continuous compare periods 10,000, 100,000, and 1,000,000 counts |
+| Cache/MPU state | Startup MPU and instruction/data caches enabled; FreeRTOS task MPU disabled |
+| Test ID(s) | `H1A-INIT-OWNERSHIP-SPLIT` |
+| Preconditions | `RUN-20261024-008` passed; D-017 assigns system-global initialization to `CM7_0` and preserves per-core local initialization |
+| Procedure/command | Replace the combined `Bsp_Init()` with primary-only `Bsp_SystemInit()` containing `Clock_Ip_Init()` and local `Bsp_CoreInit()` containing `IntCtrl_Ip_Init()`; rebuild, flash, run on hardware, and capture two debugger snapshots of the existing CM7_0 observability variables |
+| Expected result/tolerance | The structural split preserves all previously qualified CM7_0 behavior: no fatal error, advancing tick and Idle activity, nominal 10:1 and 100:1 STM cadence, and equality between every STM interrupt count and its corresponding task-execution count |
+| Actual result | Snapshot 1: `xTickCount=2823`, Idle `18788144`, interrupt counts `283/28/2`, task counts `283/28/2`, fatal `0`. Snapshot 2: `xTickCount=5797`, Idle `38577699`, interrupt counts `581/58/5`, task counts `581/58/5`, fatal `0`. Both samples show exact interrupt-to-task equality and continued progression after the initialization split. Static inspection confirmed that no call to the old `Bsp_Init()` remains. |
+| Outcome | `PASS` for the CM7_0 global/core-local initialization split |
+| Evidence paths | `evidence/H1/2026-10-24/cm7-0-init-split-snapshot-1.png` (SHA-256 `3481D2387521425BEFF7469AE5B61ADF7008258FD36CB4BCC33BD85BC3A3EFA0`); `evidence/H1/2026-10-24/cm7-0-init-split-snapshot-2.png` (SHA-256 `7B75FC2B791F28FEAC38FD4ACA15944907510B1E9DFFCB7B7D757A251B49B412`) |
+| Deviations/issues | This run validates the primary-image refactor only. `SYSTEM_READY`, standalone CM7_2 release, the secondary local-initialization path, and the secondary STM/task set are not implemented yet. A clean-build console log was not archived. |
+| Follow-up | Checkpoint the split, define and test the bounded `SYSTEM_READY` startup barrier, then configure the CM7_2-owned STM and implement `TaskB`. |
+
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
 ## Run template
@@ -366,7 +394,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
 | H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
-| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-008 | The complete CM7_0 `TaskA` set retained exact interrupt-to-execution count equality after interface cleanup, and its public symbols are now consistent; precise preemption latency, negative-hook tests, FreeRTOS MPU gate, CM7_2 `TaskB` scheduling, and simultaneous AMP execution remain open |
+| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-009 | CM7_0 retained exact three-rate task behavior after separating primary-only system initialization from core-local initialization; `SYSTEM_READY`, CM7_2 local initialization/`TaskB`, precise preemption latency, negative-hook tests, FreeRTOS MPU, and simultaneous AMP execution remain open |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
 | H5 Timers/timebase | PLANNED | - | |
