@@ -38,15 +38,11 @@ extern "C"{
 
 /* include our headers */
 #include "app_fault.h"
-#include "app_tasks.h"
-#include "bsp_init.h"
-#include "bsp_timebase.h"
+#include "core0_boot.h"
+#include "core0_main.h"
 
 
-/* Scheduler-smoke configuration. */
-
-
-static void App_Halt(void)
+static void Core0_Halt(void)
 {
     for (;;)
     {
@@ -57,55 +53,19 @@ static void App_Halt(void)
 
 int main(void)
 {
+	AppFaultCodeType faultCode;
 
+	faultCode = Core0_Boot();
+
+	if (faultCode == APP_FATAL_NONE)
+	{
+		faultCode = Core0_Main();
+	}
     /*
-     * Primary-core-only system initialization.
+     * Reaching this point always indicates a startup or scheduler failure.
      */
-	BspInitStatusType bspStatus;
-
-	bspStatus = Bsp_SystemInit();
-
-
-    if (bspStatus != BSP_INIT_SUCCESS)
-    {
-        AppFault_Set(APP_FATAL_CLOCK_INIT);
-        App_Halt();
-    }
-
-    /*
-     * Initialization local to CM7_0.
-     */
-    bspStatus = Bsp_CoreInit();
-    if (bspStatus != BSP_INIT_SUCCESS)
-    {
-        AppFault_Set(APP_FATAL_INTERRUPT_INIT);
-        App_Halt();
-    }
-
-    AppFault_Set(APP_FATAL_NONE);
-
-    /*
-     * CM7_0-owned application resources.
-     */
-    /* Initialise timebase + create task(s) */
-	BspTimebase_Init();
-
-    if (AppTasks_Create() != pdPASS)
-    {
-        AppFault_Set(APP_FATAL_TASK_CREATE);
-        App_Halt();
-    }
-
-    /*
-     * Task handles exist before the STM channels are started.
-     */
-    BspTimebase_Start();
-
-    vTaskStartScheduler();
-
-    AppFault_Set(APP_FATAL_SCHEDULER_RETURNED);
-
-    App_Halt();
+	AppFault_Set(faultCode);
+	Core0_Halt();
 
 }
 

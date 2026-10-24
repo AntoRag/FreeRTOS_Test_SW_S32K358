@@ -64,7 +64,8 @@ MEMORY
     int_sram_no_cacheable_c2   : ORIGIN = 0x20460000, LENGTH = 0x00020000    /* 128KB, needs to include int_results  */
     ram_end_c2                 : ORIGIN = 0x20480000, LENGTH = 0x00000000    /* End of core 2 ram */
 
-    int_sram_shareable         : ORIGIN = 0x20480000, LENGTH = 0x00040000    /* 256KB */
+	int_sram_shareable		   : ORIGIN = 0x20480000, LENGTH = 0x0003FF00	 /* 256KB minus boot mailbox */
+	int_sram_boot_mailbox      : ORIGIN = 0x204BFF00, LENGTH = 0x00000100	 /* 256-byte boot mailbox */
     ram_rsvd2                  : ORIGIN = 0x204C0000, LENGTH = 0             /* End of SRAM */
 }
 
@@ -241,6 +242,28 @@ SECTIONS
         KEEP(*(.mcal_shared_data))
     } > int_sram_shareable
 
+	/*
+	 * Fixed shared-memory region used for the inter-core boot mailbox.
+	 * It is deliberately excluded from the normal startup zeroing.
+	 */
+	.boot_mailbox (NOLOAD) :
+	{
+	    . = ALIGN(32);
+	    __boot_mailbox_start__ = .;
+	    KEEP(*(.boot_mailbox))
+	    . = ALIGN(32);
+	    __boot_mailbox_end__ = .;
+	} > int_sram_boot_mailbox
+
+	ASSERT(
+	    ADDR(.boot_mailbox) == ORIGIN(int_sram_boot_mailbox),
+	    "Boot mailbox placed at an unexpected address"
+	)
+
+	ASSERT(
+	    SIZEOF(.boot_mailbox) <= LENGTH(int_sram_boot_mailbox),
+	    "Boot mailbox exceeds its reserved memory"
+	)
     __Stack_dtcm_end        = ORIGIN(int_stack_dtcm);
     __Stack_dtcm_start      = ORIGIN(int_stack_dtcm) + LENGTH(int_stack_dtcm);
 

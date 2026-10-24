@@ -49,6 +49,8 @@ Do not copy kernel files or invent port settings manually. Add the matching SDK 
 
 The AMP system has one boot coordinator but two application-initialization paths. `CM7_0` is the only core allowed to perform system-global initialization. `CM7_2` remains held or waits at a bounded `SYSTEM_READY` barrier and must not touch a clocked peripheral before the global state is ready.
 
+Both ELF images retain the standard generated runtime path through `Reset_Handler` and C `main()`. The project-owned logical entrypoints are `Core0_Boot()` and `Core0_Main()` in `M7_0_0`, and `Core2_BootWait()` and `Core2_Main()` in `M7_0_2`. This is an internal responsibility split inside the two application images, not a separate bootloader/application image architecture.
+
 The target sequence is:
 
 1. `CM7_0` performs reset/startup processing and primary memory initialization.
@@ -65,9 +67,9 @@ During bring-up, the debugger group launch may prepare or release both cores. Th
 
 ### Boot mailbox contract
 
-Physical core release and logical readiness are separate mechanisms. `MC_ME` owns standalone `CM7_2` start-address programming and hardware release. A persistent boot mailbox in shared SRAM owns `SYSTEM_READY`, `CORE2_READY`, and startup-failure state. The first implementation uses bounded polling; a later directed interrupt or MU event may be added only as a wake-up notification and never replaces mailbox validation.
+Physical core release and logical readiness are separate mechanisms. `MC_ME` owns standalone `CM7_2` start-address programming and hardware release. A persistent boot mailbox in shared SRAM owns `SYSTEM_READY`, `CORE2_READY`, and startup-failure state. The hardware-proven first implementation uses bounded active polling as a temporary bootstrap mechanism. Phase 11 will evaluate an `MSCM` directed interrupt or `MU` event so the waiting core can sleep or perform other controlled work instead of spinning; that event is only a wake-up notification and never replaces mailbox validation.
 
-The mailbox is not a normal global duplicated independently in both projects. Its storage is reserved at the same explicit address in both linker maps, remains outside both images' startup copy/zero ranges, and is covered by shareable, non-cacheable memory attributes. Its minimum logical content is a magic value, a protocol version, a `CM7_0`-owned system state, a `CM7_2`-owned core state, and diagnostic failure information. Exact address, size, timeout, and warm-reset generation handling remain open implementation parameters.
+The mailbox is not ordinary per-image storage. Protocol V1 reserves the same 256-byte range at `0x204BFF00` in all four core-specific linker scripts as the 32-byte-aligned `NOLOAD` section `.boot_mailbox`. It remains outside both images' normal startup copy/zero ranges and lies inside the generated 256 KiB shareable, non-cacheable MPU region beginning at `0x20480000`. Because the primary startup ECC loop also stops before the reserved range, `CM7_0` must explicitly write every mailbox word before publishing a valid state. Its fixed-width 32-bit content includes magic, protocol version, a `CM7_0`-owned system state/error pair, a `CM7_2`-owned core state/error pair, and zero-initialized reserved words. The polling timeout and warm-reset generation handling remain open implementation parameters.
 
 For every published state transition, the producer writes the associated payload, executes `__DMB()`, and then writes the state. After the consumer observes that state, it executes `__DMB()` before reading the associated payload. `volatile` prevents inappropriate compiler treatment of polled fields but does not replace these ordering barriers. Because `__DMB()` does not flush cache lines, changing the mailbox to cacheable memory would require an additional reviewed cache-coherency protocol.
 

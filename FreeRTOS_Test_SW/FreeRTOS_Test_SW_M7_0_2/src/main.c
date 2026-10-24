@@ -35,29 +35,43 @@ extern "C"{
 /* Including necessary configuration files. */
 #include "Mcal.h"
 
-volatile int exit_code = 0;
-/* User includes */
+#include "boot_sync.h"
+#include "core2_boot.h"
+#include "core2_main.h"
 
-/*!
-  \brief The main function for the project.
-  \details The startup initialization sequence is the following:
- * - startup asm routine
- * - main()
-*/
-int main(void)
+static void Core2_Halt(void)
 {
-    /* Write your code here */
-
-    for(;;)
+    for (;;)
     {
-        if(exit_code != 0)
-        {
-            break;
-        }
+        /*
+         * Inspect:
+         *
+         * g_Core2BootWaitStatus
+         * g_Core2BootPollCount
+         * g_BootSyncMailbox
+         */
     }
-    return exit_code;
 }
 
+int main(void)
+{
+    BootSyncWaitStatusType bootStatus;
+
+    bootStatus = Core2_Boot();
+
+    if (bootStatus == BOOT_SYNC_WAIT_READY)
+    {
+        Core2_Main();
+    }
+
+    /*
+     * Reaching this point means that synchronization failed or
+     * Core2_Main() unexpectedly returned.
+     */
+    Core2_Halt();
+
+    return 0;
+}
 #ifdef __cplusplus
 }
 #endif

@@ -344,6 +344,88 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Deviations/issues | This run validates the primary-image refactor only. `SYSTEM_READY`, standalone CM7_2 release, the secondary local-initialization path, and the secondary STM/task set are not implemented yet. A clean-build console log was not archived. |
 | Follow-up | Checkpoint the split, define and test the bounded `SYSTEM_READY` startup barrier, then configure the CM7_2-owned STM and implement `TaskB`. |
 
+### RUN-20261024-010 - H1A logical boot/application entrypoint split
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Uncommitted entrypoint-refactor working tree; checkpoint pending |
+| Core(s) | Refactored logical boot/application entrypoints on `M7_0_0`; `M7_0_2` remains unchanged |
+| Clock configuration | FreeRTOS tick 1 kHz; `STM_0` counter 1 MHz; continuous compare periods 10,000, 100,000, and 1,000,000 counts |
+| Cache/MPU state | Startup MPU and instruction/data caches enabled; FreeRTOS task MPU disabled |
+| Test ID(s) | `H1A-ENTRYPOINT-SPLIT-REGRESSION` |
+| Preconditions | `RUN-20261024-009` passed; D-019 accepted; generated `Reset_Handler -> main()` runtime path retained |
+| Procedure/command | Refactor CM7_0 into the logical path `main() -> Core0_Boot() -> Core0_Main()` without changing generated startup or linker entry; rebuild and run on hardware; suspend twice and inspect fatal, tick, Idle, STM-interrupt, and TaskA-execution counters |
+| Expected result/tolerance | The refactor preserves behavior: `g_Core0FatalError=0`; tick and Idle advance; every STM interrupt count equals its matching TaskA execution count, allowing a transient difference of one when halted between ISR and task execution |
+| Actual result | Snapshot 1: `xTickCount=5455`, Idle `36301542`, interrupt counts `547/54/5`, task counts `547/54/5`, fatal `0`, and the displayed 10 ms task handle was non-null. Snapshot 2: `xTickCount=8961`, Idle `59629046`, interrupt counts `899/89/8`, task counts `899/89/8`, fatal `0`, and the task handle remained non-null. The first attempted run correctly exposed an inverted `main()` success condition; after changing it to `faultCode == APP_FATAL_NONE` and removing the redundant scheduler-error assignment, the regression passed. |
+| Outcome | `PASS` for behavior preservation through the CM7_0 logical boot/application entrypoint split |
+| Evidence paths | `evidence/H1/2026-10-24/cm7-0-entrypoint-split-snapshot-1.png` (SHA-256 `989320D8DE2441B9A86AF9D87B7D16EB105E73A2EA54CADDBB9AE9DACD6187FE`); `cm7-0-entrypoint-split-snapshot-2.png` (SHA-256 `ED220B2A30429F83E5C9C1D48613A56F3265DAA64F748DF1F02038AE7C932472`) |
+| Deviations/issues | A clean-build console log was not archived, so zero-warning build evidence remains unconfirmed. The mailbox, `MC_ME` release, CM7_2 boot wait, and `Core2_Main()` are not part of this test. |
+| Follow-up | Implement the shared boot-mailbox module and integrate only its CM7_0 initialization into `Core0_Boot()` before adding CM7_2 consumption or MC_ME release. |
+
+### RUN-20261024-011 - H1A CM7_0 boot-mailbox publication
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Uncommitted boot-mailbox working tree; checkpoint pending |
+| Core(s) | Mailbox producer on `M7_0_0`; `M7_0_2` consumer not yet implemented |
+| Shared-memory configuration | Protocol V1 mailbox at `0x204BFF00`, 256 bytes, `NOLOAD`, 32-byte aligned, covered by the generated shareable/non-cacheable MPU region |
+| Test ID(s) | `H1A-BOOT-MAILBOX-PUBLISH` |
+| Preconditions | `RUN-20261024-010` passed; D-020 accepted; map shows `.boot_mailbox` and `g_BootSyncMailbox` at `0x204BFF00` with size `0x100` and both linker assertions satisfied |
+| Procedure/command | Initialize every mailbox word from `Core0_Boot()`, execute the global clock initialization, publish `SYSTEM_READY` using the producer memory barrier, run on hardware, suspend CM7_0, and inspect the complete mailbox header together with the existing TaskA/STM observability variables |
+| Expected result/tolerance | Magic `0x4253594E`, protocol version `1`, system state `READY (2)`, system error `0`, CM7_2 state `RESET (0)`, and CM7_2 error `0`; fatal state remains zero and every STM interrupt count equals its corresponding TaskA execution count |
+| Actual result | Debugger observation showed magic `0x4253594E`, protocol version `1`, system state `2`, system error `0`, CM7_2 state `0`, and CM7_2 error `0`. `g_Core0FatalError=0`, `xTickCount=2612`, Idle `17386577`, STM counts `261/26/2`, and matching TaskA counts `261/26/2`; the displayed 10 ms task handle was non-null. The earlier enum-domain warning was corrected by publishing `BOOT_SYNC_SYSTEM_ERROR_CLOCK_INIT` to the mailbox while retaining `APP_FATAL_CLOCK_INIT` for the local application fault. |
+| Outcome | `PASS` for CM7_0 mailbox initialization, valid protocol publication, fixed runtime placement, and preservation of the complete TaskA timing behavior |
+| Evidence paths | `evidence/H1/2026-10-24/cm7-0-mailbox-publish-pass.png` (SHA-256 `354CB2DDC436708F795725DE3059BAB90E3D76A5A0C9B5F52BEC42DA96C90C7B`) |
+| Deviations/issues | Cross-core visibility is not proven because CM7_2 does not yet consume the mailbox. The clock-failure publication path, stale-state handling, polling timeout, and warm-reset behavior have not been exercised. A clean-build console log was not archived. |
+| Follow-up | Implement `Core2_BootWait()` as a bounded consumer of the mailbox while retaining the current debugger/group-launch physical release; verify valid READY consumption before adding CM7_2 local initialization or MC_ME release. |
+
+### RUN-20261024-012 - H1 CM7_2 boot-mailbox consumption
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Uncommitted dual-image boot-mailbox working tree; checkpoint pending |
+| Core(s) | `M7_0_0` mailbox producer and `M7_0_2` bounded consumer |
+| Shared-memory configuration | Protocol V1 mailbox at `0x204BFF00`, 256 bytes, `NOLOAD`, 32-byte aligned, shareable and non-cacheable; CM7_2 map reports `.boot_mailbox` size `0x100` from `boot_sync_secondary.o` and both linker assertions pass |
+| Test ID(s) | `H1-CROSS-CORE-BOOT-MAILBOX-CONSUME` |
+| Preconditions | `RUN-20261024-011` passed; both images built; CM7_0 was allowed to initialize and publish the mailbox before CM7_2 executed its consumer path |
+| Procedure/command | Launch both hardware debug sessions, retain the secondary until CM7_0 has published `SYSTEM_READY`, resume CM7_2, suspend it after entry to `Core2_Main()`, and inspect the CM7_2 boot diagnostics and its view of the shared mailbox |
+| Expected result/tolerance | CM7_2 reports `BOOT_SYNC_WAIT_READY`, performs at least one poll, enters `Core2_Main()`, and observes magic `0x4253594E`, protocol version `1`, `systemState=READY (2)`, and `systemError=0` |
+| Actual result | CM7_2 observed magic `0x4253594E`, protocol version `1`, `systemState=2`, and `systemError=0`; `g_Core2BootWaitStatus=BOOT_SYNC_WAIT_READY`, `g_Core2BootPollCount=1`, and `g_Core2MainEntered=1`. The mailbox retained `core2State=RESET (0)` and `core2Error=0` as expected because CM7_2 publication is not implemented yet. A CM7_0-only TaskA expression shown in the CM7_2 debug context could not be evaluated; this is expected per-ELF symbol scoping and is not a runtime failure. |
+| Outcome | `PASS` for successful-path cross-core mailbox visibility, protocol validation, bounded consumer completion, and CM7_2 application entry |
+| Evidence paths | `evidence/H1/2026-10-24/cm7-2-mailbox-consume-pass.png` (SHA-256 `28B436F930F016AD11F4927AE488E1C85C87FCCA9572D01DBBEDF78803A95660`) |
+| Deviations/issues | Active polling is an intentional bootstrap implementation and is not the preferred final wake-up mechanism. The polling count is an iteration bound rather than calibrated time. Timeout, invalid protocol/state, primary-failure, warm-reset/stale-mailbox, `CORE2_READY`, `MC_ME` physical release, and hardware-assisted notification paths remain untested. A clean-build log was not archived. |
+| Follow-up | Add CM7_2-owned `WAITING`/`READY`/`FAILED` publication and local initialization before TaskB; retain the mailbox as the state contract and evaluate `MSCM` directed interrupt or `MU` event wake-up in Phase 11. |
+
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
 ## Run template
@@ -394,7 +476,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
 | H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
-| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-009 | CM7_0 retained exact three-rate task behavior after separating primary-only system initialization from core-local initialization; `SYSTEM_READY`, CM7_2 local initialization/`TaskB`, precise preemption latency, negative-hook tests, FreeRTOS MPU, and simultaneous AMP execution remain open |
+| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-012 | CM7_2 successfully consumed CM7_0's protocol-V1 `SYSTEM_READY` state from the fixed shared-SRAM mailbox and entered `Core2_Main()`; timeout/failure tests, `CORE2_READY`, `MC_ME` release, CM7_2 local initialization/`TaskB`, hardware-assisted wake-up, precise preemption latency, negative-hook tests, FreeRTOS MPU, and simultaneous AMP execution remain open |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
 | H5 Timers/timebase | PLANNED | - | |
