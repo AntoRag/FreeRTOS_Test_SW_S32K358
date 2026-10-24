@@ -54,13 +54,24 @@ The target sequence is:
 1. `CM7_0` performs reset/startup processing and primary memory initialization.
 2. `CM7_0` performs `Bsp_SystemInit()`: system clock/PLL setup, global clock distribution, and other explicitly assigned shared configuration.
 3. `CM7_0` performs its `Bsp_CoreInit()`: local vector-table/NVIC configuration and other core-local setup.
-4. `CM7_0` initializes its owned `STM_0`, creates the `TaskA` set, publishes `SYSTEM_READY`, and releases or permits `CM7_2` to proceed.
-5. `CM7_2` observes `SYSTEM_READY`, performs its own `Bsp_CoreInit()`, initializes only its assigned STM/peripherals, and creates the `TaskB` set.
-6. Each image starts its own single-core FreeRTOS scheduler and enters independent application execution.
+4. `CM7_0` initializes its owned `STM_0`, creates the `TaskA` set, publishes `SYSTEM_READY` through the boot mailbox with the required memory ordering, and releases or permits `CM7_2` to proceed.
+5. In the standalone path, `CM7_0` configures the `CM7_2` boot address and performs the physical core release through `MC_ME`. A debugger or QEMU launcher may perform the physical release instead, but cannot bypass the logical mailbox check.
+6. `CM7_2` validates and observes `SYSTEM_READY`, executes the matching memory barrier, performs its own `Bsp_CoreInit()`, initializes only its assigned STM/peripherals, creates the `TaskB` set, and publishes `CORE2_READY`.
+7. Each image starts its own single-core FreeRTOS scheduler and enters independent application execution.
 
 `Clock_Ip_Init()` belongs to the primary-only system path because it programs global clock hardware. `IntCtrl_Ip_Init()` belongs to each core-local path because each Cortex-M7 application core controls its own NVIC/vector context. `Stm_Ip_Init()` is called once by the owner of the selected physical STM instance; another image must not reinitialize that same instance.
 
-During bring-up, the debugger group launch may prepare or release both cores. That convenience is not accepted as the standalone boot protocol: `CM7_2` must still use the explicit readiness barrier so the same ordering works after cold boot and under QEMU. The barrier transport, cache attributes, timeout, and failure response are not yet frozen.
+During bring-up, the debugger group launch may prepare or release both cores. That convenience is not accepted as the standalone boot protocol: `CM7_2` must still use the explicit readiness barrier so the same ordering works after cold boot and under QEMU.
+
+### Boot mailbox contract
+
+Physical core release and logical readiness are separate mechanisms. `MC_ME` owns standalone `CM7_2` start-address programming and hardware release. A persistent boot mailbox in shared SRAM owns `SYSTEM_READY`, `CORE2_READY`, and startup-failure state. The first implementation uses bounded polling; a later directed interrupt or MU event may be added only as a wake-up notification and never replaces mailbox validation.
+
+The mailbox is not a normal global duplicated independently in both projects. Its storage is reserved at the same explicit address in both linker maps, remains outside both images' startup copy/zero ranges, and is covered by shareable, non-cacheable memory attributes. Its minimum logical content is a magic value, a protocol version, a `CM7_0`-owned system state, a `CM7_2`-owned core state, and diagnostic failure information. Exact address, size, timeout, and warm-reset generation handling remain open implementation parameters.
+
+For every published state transition, the producer writes the associated payload, executes `__DMB()`, and then writes the state. After the consumer observes that state, it executes `__DMB()` before reading the associated payload. `volatile` prevents inappropriate compiler treatment of polled fields but does not replace these ordering barriers. Because `__DMB()` does not flush cache lines, changing the mailbox to cacheable memory would require an additional reviewed cache-coherency protocol.
+
+Timeout, invalid magic/version/state, or an explicit peer failure prevents scheduler startup and unowned peripheral access and enters a deterministic diagnostic failure path. None of these runtime behaviors is considered proven until both images clean-build and the complete sequence is exercised on the physical board.
 
 ## Initial task model
 

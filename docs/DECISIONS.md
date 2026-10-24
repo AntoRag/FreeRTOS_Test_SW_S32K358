@@ -156,6 +156,19 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Interface direction: separate the current board initialization into a primary-only system layer (for example `Bsp_SystemInit()`) and a per-image local layer (for example `Bsp_CoreInit()`). The exact readiness transport, timeout, shared-memory/cache attributes, and failure reaction remain open and must be decided before `TaskB` uses clocked peripherals.
 - Reason: this matches automotive master/worker startup practice, prevents concurrent or repeated programming of global registers, preserves independent AMP application execution, and gives hardware and QEMU one deterministic startup sequence to compare.
 
+## D-018 - CM7_2 hardware release and shared startup mailbox
+
+- Status: ACCEPTED
+- Date: 2026-10-24
+- Decision: Separate physical core release from logical readiness. In the standalone boot path, `CM7_0` programs the `CM7_2` start address and releases the secondary core through `MC_ME`. The persistent `SYSTEM_READY` condition is communicated through a small, versioned boot mailbox in shared SRAM. A cross-core interrupt is not the initial source of truth and is not required for the first implementation.
+- Initial protocol: `CM7_0` explicitly initializes the mailbox, reports initialization progress/failure, completes system-global initialization, publishes `SYSTEM_READY`, and releases or permits `CM7_2` to proceed. `CM7_2` waits with a bounded timeout, validates the mailbox, performs only its core-local and owned-peripheral initialization, then publishes `CORE2_READY`. Debugger-started and QEMU-started executions must obey the same logical readiness check even if those environments release the core themselves.
+- Memory contract: the mailbox must occupy one explicitly reserved address range that is identical in both ELF linker maps, is visible to both cores, and is configured shareable and non-cacheable. It must not be an ordinary per-image global and must be excluded from startup copy/zero ranges that either core could overwrite. The structure has a magic value, protocol version, explicit states, and separate single-writer fields for `CM7_0` and `CM7_2`; additional integrity fields may be introduced by the safety gate.
+- Ordering contract: publishing or consuming a mailbox state transition uses Arm data-memory barriers. The producer completes payload writes, executes `__DMB()`, then publishes the state. After observing the state, the consumer executes `__DMB()` before consuming the associated payload. `volatile` remains necessary for polled fields but is not a substitute for memory ordering, and `__DMB()` is not a substitute for cache maintenance if the memory attributes are later changed.
+- Notification policy: the first implementation uses bounded polling so it introduces no additional interrupt-controller, MSCM MSI, or MU dependency. A future directed interrupt or MU event may wake the receiving core, but the receiver must still validate the persistent mailbox state; an interrupt alone is never the readiness state.
+- Failure policy: timeout, invalid magic/version/state, or a peer-reported failure must enter a deterministic diagnostic failure path rather than starting the local scheduler or using shared hardware. Exact timeout, retry/reset reaction, mailbox address/size, and warm-reset/stale-state handling remain `Open` until implemented and tested.
+- Evidence boundary: the architecture is accepted, but `MC_ME` release, mailbox placement, barriers, timeout behavior, and `CORE2_READY` acknowledgement are not `Confirmed` until clean builds and real-board tests are recorded.
+- Reason: state plus optional notification is robust against lost or early interrupts, supports debugger and QEMU parity, and gives the two independently linked AMP images an explicit startup contract.
+
 ## Open decisions
 
 - Full package/build identifiers and applicable safety documentation to freeze beyond S32DS 3.6.5, RTD 7.0.0, GCC 10.2, and FreeRTOS V11.1.0.
@@ -164,5 +177,5 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Coding standard target (project convention only, MISRA-oriented, or formal MISRA compliance).
 - Host-runner language and artifact format.
 - Required QEMU machine/core configuration and currently implemented peripherals.
-- CM7_0-to-CM7_2 `SYSTEM_READY` transport, timeout, cache-safe storage, and failure reaction.
+- Exact boot-mailbox address/size, timeout value, warm-reset generation/stale-state scheme, and deterministic timeout/failure reaction.
 - Available lab equipment: oscilloscope/logic analyzer, CAN interface, LIN interface, Ethernet peer, loopback wiring, and SD card.
