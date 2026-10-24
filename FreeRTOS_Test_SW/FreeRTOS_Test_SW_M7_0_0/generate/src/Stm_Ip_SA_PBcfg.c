@@ -94,7 +94,7 @@ extern void App_Core0Stm1000msCallback(uint8 channel);
 const Stm_Ip_InstanceConfigType STM_0_InitConfig_PB =
 {
     /** @brief STM Freeze Enable */
-    (boolean)(TRUE),
+    (boolean)(FALSE),
 #if(STM_IP_SET_CLOCK_MODE == STD_ON)
     /** @brief STM Alternate Prescaler Value */
     47U,

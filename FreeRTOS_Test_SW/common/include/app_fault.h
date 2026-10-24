@@ -24,9 +24,15 @@ typedef enum
 
 extern volatile uint32_t g_Core0FatalError;
 
-void AppFault_Set(AppFaultCodeType faultCode);
+extern volatile uint32_t g_Core2FatalError;
 
-AppFaultCodeType AppFault_Get(void);
+void AppFault_A_Set(AppFaultCodeType faultCode);
+
+AppFaultCodeType AppFault_A_Get(void);
+
+void AppFault_B_Set(AppFaultCodeType faultCode);
+
+AppFaultCodeType AppFault_B_Get(void);
 
 
-#endif /* APP_FAULT_H_ */
+#endif /* APP_FAULT_CORE0_H_ */

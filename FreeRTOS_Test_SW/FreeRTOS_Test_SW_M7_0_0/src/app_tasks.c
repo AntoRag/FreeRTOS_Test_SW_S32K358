@@ -4,17 +4,7 @@
  *  Created on: 24 ott 2026
  *      Author: anton
  */
-#include "app_tasks.h"
-
-
-#define APP_TASK_A_10MS_PRIORITY        				(tskIDLE_PRIORITY + 3U)
-#define APP_TASK_A_100MS_PRIORITY        				(tskIDLE_PRIORITY + 2U)
-#define APP_TASK_A_1000MS_PRIORITY        			(tskIDLE_PRIORITY + 1U)
-
-
-#define APP_TASK_A_10MS_STACK_DEPTH    				(256U)
-#define APP_TASK_A_100MS_STACK_DEPTH    				(256U)
-#define APP_TASK_A_1000MS_STACK_DEPTH    				(256U)
+#include <app_tasks.h>
 
 
 volatile uint32_t g_Core0TaskA10msExecutionCount	=	0;
@@ -98,7 +88,7 @@ void AppTasks_ReleaseA1000msFromISR(BaseType_t *higherPriorityTaskWoken)
 	vTaskNotifyGiveFromISR(s_Core0TaskA1000msHandle,higherPriorityTaskWoken);
 }
 
-BaseType_t AppTasks_Create(void)
+BaseType_t AppTasks_CreateA(void)
 {
     BaseType_t status;
 

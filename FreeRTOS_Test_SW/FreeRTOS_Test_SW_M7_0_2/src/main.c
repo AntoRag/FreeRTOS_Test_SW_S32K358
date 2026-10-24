@@ -57,17 +57,16 @@ int main(void)
 {
     BootSyncWaitStatusType bootStatus;
 
+    AppFaultCodeType faultCode = APP_FATAL_NONE;
+
     bootStatus = Core2_Boot();
 
     if (bootStatus == BOOT_SYNC_WAIT_READY)
     {
-        Core2_Main();
+        faultCode = Core2_Main();
+        AppFault_B_Set(faultCode);
     }
 
-    /*
-     * Reaching this point means that synchronization failed or
-     * Core2_Main() unexpectedly returned.
-     */
     Core2_Halt();
 
     return 0;

@@ -4,14 +4,14 @@
  *  Created on: 24 ott 2026
  *      Author: anton
  */
+#include <app_tasks.h>
+#include <bsp_init.h>
+#include <bsp_timebase.h>
 #include "core0_main.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "app_tasks.h"
-#include "bsp_init.h"
-#include "bsp_timebase.h"
 
 AppFaultCodeType Core0_Main(void)
 {
@@ -20,7 +20,7 @@ AppFaultCodeType Core0_Main(void)
 	 */
 	BspInitStatusType bspStatus;
 
-	bspStatus = Bsp_CoreInit();
+	bspStatus = Bsp_Core0Init();
 	if (bspStatus != BSP_INIT_SUCCESS)
 	{
 		return APP_FATAL_INTERRUPT_INIT;
@@ -33,7 +33,7 @@ AppFaultCodeType Core0_Main(void)
 	/* Initialise timebase + create task(s) */
 	BspTimebase_Init();
 
-	if (AppTasks_Create() != pdPASS)
+	if (AppTasks_CreateA() != pdPASS)
 	{
 		return APP_FATAL_TASK_CREATE;
 	}

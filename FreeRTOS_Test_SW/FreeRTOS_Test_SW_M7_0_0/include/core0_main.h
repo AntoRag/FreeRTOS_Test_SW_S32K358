@@ -8,7 +8,7 @@
 #ifndef CORE0_MAIN_H_
 #define CORE0_MAIN_H_
 
-#include "app_fault.h"
+#include <app_fault.h>
 
 /*
  * Initialize and start the CM7_0 application.

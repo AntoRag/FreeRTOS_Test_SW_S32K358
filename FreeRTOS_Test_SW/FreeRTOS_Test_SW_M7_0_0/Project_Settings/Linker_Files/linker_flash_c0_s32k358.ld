@@ -307,7 +307,7 @@ SECTIONS
     __INT_SRAM_END           = ORIGIN(ram_end_c0);
 
     __INT_SRAM_SHARE_START   = ORIGIN(int_sram_shareable);
-    __INT_SRAM_SHARE_END     = ORIGIN(int_sram_shareable) + LENGTH(int_sram_shareable);
+    __INT_SRAM_SHARE_END     = ORIGIN(int_sram_boot_mailbox) + LENGTH(int_sram_boot_mailbox); /* Changed to initialize until mailbox*/
 
     __INT_ITCM_START         = ORIGIN(int_itcm);
     __INT_ITCM_END           = ORIGIN(int_itcm) + LENGTH(int_itcm);

@@ -25,6 +25,7 @@ Operating rules:
 - Keep tests deterministic, independently runnable, bounded by timeouts, and machine-readable.
 - Avoid coupling test logic directly to NXP-generated symbols. Use a thin board/support layer so the same test intent can run on hardware and QEMU.
 - Update `docs/PERIPHERALS_USED.md` whenever executed firmware introduces or removes a hardware-module dependency.
+- Before giving S32DS GUI instructions, verify the exact field names and available controls against the user's installed S32DS version using the applicable skill and direct UI or installed-plugin evidence. Never translate internal `.launch`/`.mex` attribute names into assumed GUI labels. If the UI cannot be inspected, label the mapping `Open` and request a screenshot of the relevant tab instead of guessing.
 - Prefer the smallest safe step and one newly introduced variable per board experiment.
 
 Current status: hardware gate H0 has passed. Both AMP images contain independent single-core FreeRTOS V11.1.0 integrations; SMP is explicitly rejected. On `M7_0_0`, the complete STM0-released `TaskA` set at 10/100/1000 ms and the Idle hook have passed on real hardware with exact interrupt-to-execution count equality. The next implementation step is the independent `TaskB` set on `M7_0_2`, followed by simultaneous dual-image validation.

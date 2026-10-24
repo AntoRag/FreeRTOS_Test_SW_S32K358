@@ -5,8 +5,8 @@
  *      Author: anton
  */
 
-#include "bsp_timebase.h"
-
+#include <app_tasks.h>
+#include <bsp_timebase.h>
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -14,7 +14,6 @@
 #include "Stm_Ip.h"
 #include "Stm_Ip_Cfg.h"
 
-#include "app_tasks.h"
 
 
 volatile uint32_t g_Core0Stm10msInterruptCount		=	0;
@@ -63,31 +62,31 @@ void App_Core0Stm1000msCallback(uint8 channel)
 void BspTimebase_Init(void)
 {
 	/* Initialise STM*/
-	Stm_Ip_Init(APP_STM_INSTANCE,&STM_0_InitConfig_PB);
+	Stm_Ip_Init(APP_A_STM_INSTANCE,&STM_0_InitConfig_PB);
 
-	Stm_Ip_InitChannel(APP_STM_INSTANCE, STM_0_CH_0);
-	Stm_Ip_InitChannel(APP_STM_INSTANCE, STM_0_CH_1);
-	Stm_Ip_InitChannel(APP_STM_INSTANCE, STM_0_CH_2);
+	Stm_Ip_InitChannel(APP_A_STM_INSTANCE, STM_0_CH_0);
+	Stm_Ip_InitChannel(APP_A_STM_INSTANCE, STM_0_CH_1);
+	Stm_Ip_InitChannel(APP_A_STM_INSTANCE, STM_0_CH_2);
 }
 
 void BspTimebase_Start(void)
 {
     /* Start the periodic STM compare channels. */
     Stm_Ip_StartCounting(
-        APP_STM_INSTANCE,
-        APP_STM_10MS_CHANNEL,
-        APP_STM_10MS_TICKS
+        APP_A_STM_INSTANCE,
+        APP_A_STM_10MS_CHANNEL,
+        APP_A_STM_10MS_TICKS
     );
 
     Stm_Ip_StartCounting(
-        APP_STM_INSTANCE,
-        APP_STM_100MS_CHANNEL,
-        APP_STM_100MS_TICKS
+        APP_A_STM_INSTANCE,
+        APP_A_STM_100MS_CHANNEL,
+        APP_A_STM_100MS_TICKS
     );
 
     Stm_Ip_StartCounting(
-        APP_STM_INSTANCE,
-        APP_STM_1000MS_CHANNEL,
-        APP_STM_1000MS_TICKS
+        APP_A_STM_INSTANCE,
+        APP_A_STM_1000MS_CHANNEL,
+        APP_A_STM_1000MS_TICKS
     );
 }

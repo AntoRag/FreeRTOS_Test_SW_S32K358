@@ -426,6 +426,88 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Deviations/issues | Active polling is an intentional bootstrap implementation and is not the preferred final wake-up mechanism. The polling count is an iteration bound rather than calibrated time. Timeout, invalid protocol/state, primary-failure, warm-reset/stale-mailbox, `CORE2_READY`, `MC_ME` physical release, and hardware-assisted notification paths remain untested. A clean-build log was not archived. |
 | Follow-up | Add CM7_2-owned `WAITING`/`READY`/`FAILED` publication and local initialization before TaskB; retain the mailbox as the state contract and evaluate `MSCM` directed interrupt or `MU` event wake-up in Phase 11. |
 
+### RUN-20261024-013 - STM debug-freeze isolation
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH`; temporary diagnostic launch with only the primary debug session active |
+| Git commit/build ID | Uncommitted diagnostic configuration; checkpoint pending |
+| Core(s) | `M7_0_0` executing while the debugger left `M7_0_2` halted |
+| Clock configuration | FreeRTOS tick 1 kHz; `STM_0` nominally 1 MHz; clock/MC_ME register observations unchanged between the failing and working diagnostic cases |
+| Cache/MPU state | Startup MPU and instruction/data caches enabled; FreeRTOS task MPU disabled |
+| Test ID(s) | `H1A-STM-DEBUG-FREEZE-DIAGNOSIS` |
+| Preconditions | The Launch Group executed TaskA correctly, while a primary-only debug launch advanced the Idle counter but left `STM_0.CNT`, STM interrupt counters, and TaskA execution counters stopped. `StmFreezeEnable` was initially enabled and generated `STM_0.CR = 0x2F03`. |
+| Procedure/command | Change only `StmFreezeEnable` to false through S32 Configuration Tools, regenerate/rebuild, start the primary diagnostic session, and take repeated debugger snapshots of `STM_0.CR`, `STM_0.CNT`, NVIC/clock observations, STM interrupt counters, and matching TaskA execution counters. |
+| Expected result/tolerance | If the halted multicore debug state is asserting STM debug freeze, clearing only `FRZ` must allow `STM_0.CNT` and all three STM-driven tasks to progress without changing the clock/MC_ME observations. |
+| Actual result | `STM_0.CR` changed from `0x2F03` to `0x2F01` (`TEN=1`, `FRZ=0`). Two snapshots showed `STM_0.CNT` increasing from `17660025` to `36236283`; a later snapshot showed `101678153`. The 10/100/1000 ms interrupt counts were `256/26/3`, exactly matching TaskA execution counts `256/26/3`. NVIC enable and the observed clock/MC_ME fields remained unchanged. |
+| Outcome | `PASS` for isolating the apparent task stoppage to STM debug freeze under the primary-only debugger state; no standalone firmware clock or scheduler defect was demonstrated |
+| Evidence paths | Debugger screenshots supplied during the session; durable copies and hashes were not archived |
+| Deviations/issues | `StmFreezeEnable=false` was diagnostic only. A primary-only launch is not accepted as a normal AMP test because its result depends on debugger treatment of the unlaunched core. |
+| Follow-up | Restore `StmFreezeEnable=true`, use the multicore Launch Group for interactive debugging, and implement standalone CM7_2 release through Power/MC_ME. |
+
+### RUN-20261025-014 - PEmicro S32K358 macro interference isolation
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-25 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | PEmicro path from S32DS; exact probe firmware not yet recorded |
+| S32DS/PEmicro version | S32DS 3.6.5; `com.pemicro.debug.gdbjtag.pne_6.2.7.202610202056` |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH`; two core-specific child launches coordinated by the FLASH Launch Group |
+| Git commit/build ID | Uncommitted MC_ME/TaskB working tree; checkpoint pending |
+| Core(s) | `M7_0_0` and `M7_0_2` |
+| Test ID(s) | `H1-PEMICRO-MACRO-ISOLATION` |
+| Preconditions | The application configures CM7_2 boot address/release through generated Power/MC_ME data; the stock PEmicro S32K358 macro was being executed during debugger startup and CM7_2 did not start at the application vector table. |
+| Procedure/command | Inspect the installed PEmicro device macro, rename `S32K358.mac` to `S32K358_.mac` so PEmicro cannot execute it, then repeat the multicore FLASH debug launch. The operator followed the NXP S32K324 dual-core PEmicro guide as precedent. |
+| Expected result/tolerance | PEmicro no longer overwrites application-owned MC_ME boot/control state; CM7_0 releases CM7_2 at the linked flash vector address and CM7_2 enters its application path. |
+| Actual result | After the macro was disabled, application-owned multicore startup worked. Static inspection confirmed that the macro wrote temporary SRAM vectors, programmed both CM7_0 and CM7_2 MC_ME boot/control registers, and reset both cores. The inspected renamed macro SHA-256 is `8D4092F0348C237A7E5306F972BC9F5F205B3E7BD6DA3F2DBEC0A49C8E642732`. During the subsequent TaskB integration run, CM7_0 faulted while initializing the mailbox; inspection also showed that the disabled macro had previously performed DMA-based SRAM initialization and the firmware startup ECC range stopped at `0x204BFF00`, immediately before the mailbox. |
+| Outcome | `PASS` for isolating and proving PEmicro MC_ME interference; `OPEN` for debugger-independent SRAM/ECC initialization and the complete TaskB run |
+| Evidence paths | Debugger screenshots supplied during the session; durable copies and hashes were not archived. Installed renamed macro: `C:/NXP/S32DS.3.6.5/eclipse/plugins/com.pemicro.debug.gdbjtag.pne_6.2.7.202610202056/supportFiles_ARM/NXP/S32K3xx/S32K358_.mac`. NXP source: `https://community.nxp.com/t5/S32-Design-Studio-Knowledge-Base/Dual-cores-debugging-with-PEMicro-s-MULTILINK-by-S32DS-for/ta-p/1478645`. |
+| Deviations/issues | Renaming an installed plug-in file is host-local and may be undone by update/reinstallation. The complete stock macro cannot remain the hidden owner of SRAM initialization. The current CM7_2 static review also found a missing `Stm_Ip_Init()` call, `STM2_IRQn` generated with `undefined_handler` instead of `STM_2_ISR`, and a `void Core2_Main()` returning application fault values. These are not the cause of the earlier CM7_0 mailbox ECC fault but must be corrected before TaskB qualification. |
+| Follow-up | Extend CM7_0 startup shared-SRAM ECC initialization through `0x204C0000`, rebuild both images, then correct the three CM7_2 integration findings and run one bounded dual-core TaskA/TaskB hardware test. |
+
+### RUN-20261025-015 - Simultaneous CM7_0 TaskA and CM7_2 TaskB execution
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-25 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | PEmicro path from S32DS; exact probe firmware not yet recorded |
+| S32DS/PEmicro version | S32DS 3.6.5; `com.pemicro.debug.gdbjtag.pne_6.2.7.202610202056`; stock `S32K358.mac` disabled by local rename |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0, one independent single-core instance per ELF |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH`; multicore FLASH Launch Group |
+| Git commit/build ID | Uncommitted MC_ME/ECC/TaskB working tree; checkpoint pending |
+| Core(s) | `M7_0_0` and `M7_0_2` executing simultaneously |
+| Clock configuration | STM0 and STM2 configured as independent 1 MHz application timebases with 10/100/1000 ms channels |
+| Cache/MPU state | Startup MPU and instruction/data caches enabled; boot mailbox in shareable non-cacheable SRAM |
+| Test ID(s) | `H1-DUAL-CORE-TASKA-TASKB` |
+| Preconditions | CM7_0 startup shared-SRAM ECC range extended through mailbox end `0x204C0000`; STM2 instance initialized on CM7_2; `STM2_IRQn` generated with `STM_2_ISR`; CM7_2 application entry returns `AppFaultCodeType`; stock PEmicro S32K358 macro disabled. |
+| Procedure/command | Clean/rebuild both `Debug_FLASH` images, launch the two child sessions through the multicore FLASH Launch Group, resume execution, suspend for observation, and compare each STM interrupt count with its corresponding task execution count in the owning ELF context. |
+| Expected result/tolerance | Both schedulers execute concurrently with fatal state zero. Each 10/100/1000 ms interrupt count equals its corresponding TaskA or TaskB execution count, allowing a transient difference of one if halted between ISR notification and task execution. CM7_2 must report `BOOT_SYNC_WAIT_READY` and enter `Core2_Main()`. |
+| Actual result | CM7_2 reported `g_Core2FatalError=0`, `g_Core2MainEntered=1`, and `g_Core2BootWaitStatus=BOOT_SYNC_WAIT_READY`. Its STM2 interrupt counts were `242/24/2` and TaskB execution counts were exactly `242/24/2`. CM7_0 reported `g_Core0FatalError=0`, non-null handles for all three TaskA tasks, STM0 interrupt counts `1638/163/16`, and exactly matching TaskA execution counts `1638/163/16`; its Idle counter was `108529992`. CM7_2 Idle remained zero because its generated `FreeRTOSConfig.h` has `configUSE_IDLE_HOOK=0`, unlike CM7_0 where it is enabled; this is a configuration observation, not a scheduler failure. |
+| Outcome | `PASS` for simultaneous dual-image AMP scheduler execution, TaskA/TaskB periodic release, mailbox readiness consumption, application-owned MC_ME release under debug, and debugger-independent mailbox ECC initialization |
+| Evidence paths | Debugger screenshots supplied during the session; durable copies and hashes were not archived |
+| Deviations/issues | A clean-build console log and exact ELF/map identities were not archived. The run used the debugger Launch Group, so standalone power-cycle/cold-boot release without debugger participation remains unconfirmed. `CORE2_READY` publication, failure/timeout/warm-reset cases, and hardware-assisted wake-up remain open. |
+| Follow-up | Create a Git checkpoint for the proven dual-core baseline, then perform a standalone power-cycle test that flashes both images once and observes execution without allowing the debugger to create or release CM7_2 state. |
+
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
 ## Run template
@@ -476,7 +558,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
 | H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
-| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-012 | CM7_2 successfully consumed CM7_0's protocol-V1 `SYSTEM_READY` state from the fixed shared-SRAM mailbox and entered `Core2_Main()`; timeout/failure tests, `CORE2_READY`, `MC_ME` release, CM7_2 local initialization/`TaskB`, hardware-assisted wake-up, precise preemption latency, negative-hook tests, FreeRTOS MPU, and simultaneous AMP execution remain open |
+| H1/2 Dual-core AMP FreeRTOS and observability | PASS WITH OPEN FOLLOW-UPS | RUN-20261025-015 | Both independent FreeRTOS schedulers and all six periodic tasks execute simultaneously with exact ISR/task-count agreement and fatal states zero. Standalone no-debugger cold boot, `CORE2_READY`, negative boot-protocol tests, and durable build/evidence artifacts remain open. |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
 | H5 Timers/timebase | PLANNED | - | |

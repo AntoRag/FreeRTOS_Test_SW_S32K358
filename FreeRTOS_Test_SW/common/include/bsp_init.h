@@ -23,6 +23,17 @@ BspInitStatusType Bsp_SystemInit(void);
 /*
  * Initialization of resources local to the executing core.
  */
-BspInitStatusType Bsp_CoreInit(void);
+BspInitStatusType Bsp_Core0Init(void);
 
-#endif /* BSP_INIT_H_ */
+/*
+ * Initialization of resources local to the executing core.
+ */
+BspInitStatusType Bsp_Core2Init(void);
+
+/*
+ * Physically release CM7_2 through the generated Power/MC_ME
+ * configuration. SYSTEM_READY must be published before this call.
+ */
+void Bsp_ReleaseCore2(void);
+
+#endif /* BSP_INIT_CORE0_H_ */

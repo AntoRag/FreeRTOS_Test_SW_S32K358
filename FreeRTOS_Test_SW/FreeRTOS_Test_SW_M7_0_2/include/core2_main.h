@@ -9,6 +9,7 @@
 #define CORE2_MAIN_H_
 
 #include <stdint.h>
+#include <app_fault.h>
 
 /*
  * Debugger-visible proof that CM7_2 passed the boot barrier and entered
@@ -23,6 +24,6 @@ extern volatile uint32_t g_Core2MainEntered;
  * initialization and TaskB creation will be added after the mailbox
  * consumer has passed its hardware test.
  */
-void Core2_Main(void);
+AppFaultCodeType Core2_Main(void);
 
 #endif /* CORE2_MAIN_H_ */

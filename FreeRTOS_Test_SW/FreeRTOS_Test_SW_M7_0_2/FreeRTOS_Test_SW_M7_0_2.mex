@@ -383,6 +383,26 @@
                   <data type="Version">1.0.0</data>
                </feature>
             </dependency>
+            <dependency resourceType="SWComponent" resourceId="platform.driver.stm" description="Stm is not found in the toolchain/IDE project. The project will not compile!" problem_level="2" source="Peripherals">
+               <feature name="enabled" evaluation="equal">
+                  <data type="Boolean">true</data>
+               </feature>
+            </dependency>
+            <dependency resourceType="SWComponent" resourceId="platform.driver.stm" description="An unsupported version of the Stm in the toolchain/IDE project. Required: ${required_value}, actual: ${actual_value}. The project might not compile correctly." problem_level="1" source="Peripherals">
+               <feature name="version" evaluation="equivalent">
+                  <data type="Version">1.0.0</data>
+               </feature>
+            </dependency>
+            <dependency resourceType="SWComponent" resourceId="platform.driver.IntCtrl_Ip" description="IntCtrl_Ip is not found in the toolchain/IDE project. The project will not compile!" problem_level="2" source="Peripherals">
+               <feature name="enabled" evaluation="equal">
+                  <data type="Boolean">true</data>
+               </feature>
+            </dependency>
+            <dependency resourceType="SWComponent" resourceId="platform.driver.IntCtrl_Ip" description="An unsupported version of the IntCtrl_Ip in the toolchain/IDE project. Required: ${required_value}, actual: ${actual_value}. The project might not compile correctly." problem_level="1" source="Peripherals">
+               <feature name="version" evaluation="equivalent">
+                  <data type="Version">1.0.0</data>
+               </feature>
+            </dependency>
             <dependency resourceType="Tool" resourceId="Clocks" description="The Clocks tool is required by the Peripherals tool, but it is disabled." problem_level="2" source="Peripherals">
                <feature name="enabled" evaluation="equal">
                   <data>true</data>
@@ -392,12 +412,19 @@
          <generated_project_files>
             <file path="generate/include/DeviceDefinition.h" update_enabled="true"/>
             <file path="generate/include/FreeRTOSConfig.h" update_enabled="true"/>
+            <file path="generate/include/IntCtrl_Ip_Cfg.h" update_enabled="true"/>
+            <file path="generate/include/IntCtrl_Ip_CfgDefines.h" update_enabled="true"/>
             <file path="generate/include/OsIf_ArchCfg.h" update_enabled="true"/>
             <file path="generate/include/OsIf_Cfg.h" update_enabled="true"/>
             <file path="generate/include/Siul2_Port_Ip_Defines.h" update_enabled="true"/>
             <file path="generate/include/Soc_Ips.h" update_enabled="true"/>
+            <file path="generate/include/Stm_Ip_Cfg.h" update_enabled="true"/>
+            <file path="generate/include/Stm_Ip_Cfg_Defines.h" update_enabled="true"/>
+            <file path="generate/include/Stm_Ip_SA_PBcfg.h" update_enabled="true"/>
             <file path="generate/include/modules.h" update_enabled="true"/>
+            <file path="generate/src/IntCtrl_Ip_Cfg.c" update_enabled="true"/>
             <file path="generate/src/OsIf_Cfg.c" update_enabled="true"/>
+            <file path="generate/src/Stm_Ip_SA_PBcfg.c" update_enabled="true"/>
          </generated_project_files>
          <peripherals_profile>
             <processor_version>0.0.0</processor_version>
@@ -616,6 +643,170 @@
                         <struct name="us_tab">
                            <setting name="configUSER_SETTINGS" value=""/>
                         </struct>
+                     </config_set>
+                  </instance>
+                  <instance name="Stm" uuid="ab031832-851c-4af0-b2d4-68ede28e8e0f" type="Stm" type_id="Stm" mode="ip" enabled="true" comment="" custom_name_enabled="false" editing_lock="false">
+                     <config_set name="Stm">
+                        <setting name="Name" value="Stm"/>
+                        <struct name="ConfigTimeSupport">
+                           <setting name="POST_BUILD_VARIANT_USED" value="false"/>
+                           <setting name="IMPLEMENTATION_CONFIG_VARIANT" value="VARIANT-POST-BUILD"/>
+                        </struct>
+                        <struct name="GptChannelConfigSet">
+                           <setting name="Name" value="GptChannelConfigSet"/>
+                           <array name="GptStm">
+                              <struct name="0">
+                                 <setting name="Name" value="Stm2"/>
+                                 <setting name="GptStmModule" value="STM_2"/>
+                                 <setting name="GptStmPrescaler" value="48"/>
+                                 <setting name="GptStmAlternatePrescaler" value="48"/>
+                                 <setting name="StmFreezeEnable" value="false"/>
+                                 <array name="GptStmChannels">
+                                    <struct name="0">
+                                       <setting name="Name" value="Core2Stm10msChannel"/>
+                                       <setting name="GptStmChannel" value="CH_0"/>
+                                       <setting name="StmAbsoluteCounting" value="false"/>
+                                       <setting name="StmNotification" value="App_Core2Stm10msCallback"/>
+                                       <setting name="StmChannelMode" value="STM_IP_CH_MODE_CONTINUOUS"/>
+                                    </struct>
+                                    <struct name="1">
+                                       <setting name="Name" value="Core2Stm100msChannel"/>
+                                       <setting name="GptStmChannel" value="CH_1"/>
+                                       <setting name="StmAbsoluteCounting" value="false"/>
+                                       <setting name="StmNotification" value="App_Core2Stm100msCallback"/>
+                                       <setting name="StmChannelMode" value="STM_IP_CH_MODE_CONTINUOUS"/>
+                                    </struct>
+                                    <struct name="2">
+                                       <setting name="Name" value="Core2Stm1000msChannel"/>
+                                       <setting name="GptStmChannel" value="CH_2"/>
+                                       <setting name="StmAbsoluteCounting" value="false"/>
+                                       <setting name="StmNotification" value="App_Core2Stm1000msCallback"/>
+                                       <setting name="StmChannelMode" value="STM_IP_CH_MODE_CONTINUOUS"/>
+                                    </struct>
+                                 </array>
+                              </struct>
+                           </array>
+                        </struct>
+                        <array name="GptHwConfiguration">
+                           <struct name="0">
+                              <setting name="Name" value="GptHwConfiguration_0"/>
+                              <setting name="GptIsrHwId" value="STM_0_CH_0"/>
+                              <setting name="GptIsrEnable" value="false"/>
+                              <setting name="GptChannelIsUsed" value="false"/>
+                           </struct>
+                           <struct name="1">
+                              <setting name="Name" value="GptHwConfiguration_1"/>
+                              <setting name="GptIsrHwId" value="STM_0_CH_1"/>
+                              <setting name="GptIsrEnable" value="false"/>
+                              <setting name="GptChannelIsUsed" value="false"/>
+                           </struct>
+                           <struct name="2">
+                              <setting name="Name" value="GptHwConfiguration_2"/>
+                              <setting name="GptIsrHwId" value="STM_0_CH_2"/>
+                              <setting name="GptIsrEnable" value="false"/>
+                              <setting name="GptChannelIsUsed" value="false"/>
+                           </struct>
+                           <struct name="3">
+                              <setting name="Name" value="GptHwConfiguration_3"/>
+                              <setting name="GptIsrHwId" value="STM_0_CH_3"/>
+                              <setting name="GptIsrEnable" value="false"/>
+                              <setting name="GptChannelIsUsed" value="false"/>
+                           </struct>
+                           <struct name="4">
+                              <setting name="Name" value="GptHwConfiguration_4"/>
+                              <setting name="GptIsrHwId" value="STM_1_CH_0"/>
+                              <setting name="GptIsrEnable" value="false"/>
+                              <setting name="GptChannelIsUsed" value="false"/>
+                           </struct>
+                           <struct name="5">
+                              <setting name="Name" value="GptHwConfiguration_5"/>
+                              <setting name="GptIsrHwId" value="STM_1_CH_1"/>
+                              <setting name="GptIsrEnable" value="false"/>
+                              <setting name="GptChannelIsUsed" value="false"/>
+                           </struct>
+                           <struct name="6">
+                              <setting name="Name" value="GptHwConfiguration_6"/>
+                              <setting name="GptIsrHwId" value="STM_1_CH_2"/>
+                              <setting name="GptIsrEnable" value="false"/>
+                              <setting name="GptChannelIsUsed" value="false"/>
+                           </struct>
+                           <struct name="7">
+                              <setting name="Name" value="GptHwConfiguration_7"/>
+                              <setting name="GptIsrHwId" value="STM_1_CH_3"/>
+                              <setting name="GptIsrEnable" value="false"/>
+                              <setting name="GptChannelIsUsed" value="false"/>
+                           </struct>
+                           <struct name="8">
+                              <setting name="Name" value="GptHwConfiguration_8"/>
+                              <setting name="GptIsrHwId" value="STM_2_CH_0"/>
+                              <setting name="GptIsrEnable" value="true"/>
+                              <setting name="GptChannelIsUsed" value="true"/>
+                           </struct>
+                           <struct name="9">
+                              <setting name="Name" value="GptHwConfiguration_9"/>
+                              <setting name="GptIsrHwId" value="STM_2_CH_1"/>
+                              <setting name="GptIsrEnable" value="true"/>
+                              <setting name="GptChannelIsUsed" value="true"/>
+                           </struct>
+                           <struct name="10">
+                              <setting name="Name" value="GptHwConfiguration_10"/>
+                              <setting name="GptIsrHwId" value="STM_2_CH_2"/>
+                              <setting name="GptIsrEnable" value="true"/>
+                              <setting name="GptChannelIsUsed" value="true"/>
+                           </struct>
+                           <struct name="11">
+                              <setting name="Name" value="GptHwConfiguration_11"/>
+                              <setting name="GptIsrHwId" value="STM_2_CH_3"/>
+                              <setting name="GptIsrEnable" value="false"/>
+                              <setting name="GptChannelIsUsed" value="false"/>
+                           </struct>
+                        </array>
+                        <struct name="GptConfigurationOfOptApiServices">
+                           <setting name="Name" value="GptConfigurationOfOptApiServices"/>
+                           <setting name="GptPredefTimerFunctionalityApi" value="false"/>
+                        </struct>
+                        <struct name="GptAutosarExt">
+                           <setting name="Name" value="GptAutosarExt"/>
+                           <setting name="GptEnableDualClockMode" value="false"/>
+                           <setting name="GptChangeNextTimeoutValueApi" value="false"/>
+                           <setting name="GptEnableUserModeSupport" value="false"/>
+                           <setting name="ChainModeApi" value="false"/>
+                           <setting name="GptStandbyWakeupSupport" value="false"/>
+                           <setting name="GptEnableTriggers" value="false"/>
+                        </struct>
+                        <struct name="GptDriverConfiguration">
+                           <setting name="Name" value="GptDriverConfiguration"/>
+                           <setting name="GptDevErrorDetect" value="false"/>
+                        </struct>
+                     </config_set>
+                  </instance>
+                  <instance name="IntCtrl_Ip" uuid="d5b1998e-8e61-4aab-a630-a4ac68dee6bc" type="IntCtrl_Ip" type_id="IntCtrl_Ip" mode="ip" enabled="true" comment="" custom_name_enabled="false" editing_lock="false">
+                     <config_set name="IntCtrl_Ip">
+                        <setting name="Name" value="IntCtrl_Ip"/>
+                        <struct name="ConfigTimeSupport">
+                           <setting name="POST_BUILD_VARIANT_USED" value="false"/>
+                           <setting name="IMPLEMENTATION_CONFIG_VARIANT" value="VARIANT-PRE-COMPILE"/>
+                        </struct>
+                        <struct name="IntCtrlConfigGeneral">
+                           <setting name="Name" value="IntCtrlConfigGeneral"/>
+                           <setting name="IntCtrlDevErrorDetect" value="true"/>
+                           <setting name="PlatformEnableUserModeSupport" value="false"/>
+                           <setting name="IntctrlEnableMSIConfiguration" value="false"/>
+                        </struct>
+                        <array name="IntCtrlConfig">
+                           <struct name="0">
+                              <setting name="Name" value="IntCtrlConfig_2"/>
+                              <array name="PlatformIsrConfig">
+                                 <struct name="0">
+                                    <setting name="Name" value="PlatformIsrConfig_2"/>
+                                    <setting name="IsrName" value="STM2_IRQn"/>
+                                    <setting name="IsrEnabled" value="true"/>
+                                    <setting name="IsrPriority" value="2"/>
+                                    <setting name="IsrHandler" value="STM_2_ISR"/>
+                                 </struct>
+                              </array>
+                           </struct>
+                        </array>
                      </config_set>
                   </instance>
                </instances>

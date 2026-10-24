@@ -37,7 +37,7 @@ extern "C"{
 #include "Mcal.h"
 
 /* include our headers */
-#include "app_fault.h"
+#include <app_fault.h>
 #include "core0_boot.h"
 #include "core0_main.h"
 
@@ -64,7 +64,7 @@ int main(void)
     /*
      * Reaching this point always indicates a startup or scheduler failure.
      */
-	AppFault_Set(faultCode);
+	AppFault_A_Set(faultCode);
 	Core0_Halt();
 
 }

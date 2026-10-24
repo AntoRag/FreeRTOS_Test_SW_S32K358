@@ -4,10 +4,10 @@
  *  Created on: 24 ott 2026
  *      Author: anton
  */
+#include <app_fault.h>
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "app_fault.h"
 
 volatile uint32_t g_Core0IdleIterationCount			=	0;
 
@@ -20,7 +20,7 @@ void vApplicationIdleHook(void)
 /* vApplicationMallocFailedHook() captures failures from the temporary dynamic-allocation configuration. */
 void vApplicationMallocFailedHook(void)
 {
-    AppFault_Set(APP_FATAL_MALLOC_FAILED);
+    AppFault_A_Set(APP_FATAL_MALLOC_FAILED);
 
     taskDISABLE_INTERRUPTS();
 
@@ -39,7 +39,7 @@ void vApplicationStackOverflowHook(
     (void)taskHandle;
     (void)taskName;
 
-    AppFault_Set(APP_FATAL_STACK_OVERFLOW);
+    AppFault_A_Set(APP_FATAL_STACK_OVERFLOW);
 
     taskDISABLE_INTERRUPTS();
 

@@ -160,7 +160,6 @@
 									<listOptionValue builtIn="false" value="MULTIPLE_IMAGE"/>
 									<listOptionValue builtIn="false" value="MULTIPLE_CORE"/>
 									<listOptionValue builtIn="false" value="CM7_1_ENABLE"/>
-									<listOptionValue builtIn="false" value="CM7_2_ENABLE"/>
 									<listOptionValue builtIn="false" value="CORE0"/>
 								</option>
 								<option id="com.nxp.s32ds.cle.arm.mbs.arm32.bare.tool.assembler.option.target.instructionset.697857218" name="Instruction set" superClass="com.nxp.s32ds.cle.arm.mbs.arm32.bare.tool.assembler.option.target.instructionset" value="com.nxp.s32ds.cle.arm.mbs.arm32.bare.tool.assembler.option.target.instructionset.thumb" valueType="enumerated"/>
@@ -850,9 +849,9 @@
 		<COND_TOOLCHAIN_CUSTOM_OPTION/>
 	</storageModule>
 	<storageModule moduleId="com.nxp.s32ds.cle.uct.internal.core.toolchainScriptProfile">
-		<COND_TOOLCHAIN_COMPONENTS_OPTION>COPY=platform.driver.stm;platform.os.freertosCM7;platform.os.freertos_heap_1;platform.driver.clock;platform.driver.osif;platform.driver.IntCtrl_Ip;platform.os.freertos;platform.driver.siul2_port</COND_TOOLCHAIN_COMPONENTS_OPTION>
+		<COND_TOOLCHAIN_COMPONENTS_OPTION>COPY=platform.driver.stm;platform.os.freertosCM7;platform.os.freertos_heap_1;platform.driver.power;platform.driver.clock;platform.driver.osif;platform.driver.IntCtrl_Ip;platform.os.freertos;platform.driver.siul2_port</COND_TOOLCHAIN_COMPONENTS_OPTION>
 	</storageModule>
 	<storageModule moduleId="com.nxp.s32ds.cle.uct.core">
-		<sdkComponents>platform.driver.clock;platform.driver.rte_mcu;platform.driver.det;platform.driver.osif;platform.driver.rte_osif;platform.driver.siul2_port;platform.driver.rte_port;platform.os.freertos;platform.os.freertosCM7;platform.os.freertos_heap_1;platform.driver.stm;platform.driver.rte_gpt;platform.driver.IntCtrl_Ip</sdkComponents>
+		<sdkComponents>platform.driver.clock;platform.driver.rte_mcu;platform.driver.det;platform.driver.osif;platform.driver.rte_osif;platform.driver.siul2_port;platform.driver.rte_port;platform.os.freertos;platform.os.freertosCM7;platform.os.freertos_heap_1;platform.driver.stm;platform.driver.rte_gpt;platform.driver.IntCtrl_Ip;platform.driver.power</sdkComponents>
 	</storageModule>
 </cproject>

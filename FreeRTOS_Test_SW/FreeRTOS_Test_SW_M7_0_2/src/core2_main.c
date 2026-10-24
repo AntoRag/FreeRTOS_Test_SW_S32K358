@@ -7,11 +7,18 @@
  * CM7_2 application entrypoint.
  */
 
+#include <app_tasks.h>
+#include <app_fault.h>
+#include <bsp_init.h>
+#include <bsp_timebase.h>
 #include "core2_main.h"
+
+#include "FreeRTOS.h"
+#include "task.h"
 
 volatile uint32_t g_Core2MainEntered = 0U;
 
-void Core2_Main(void)
+AppFaultCodeType Core2_Main(void)
 {
     /*
      * Reaching this assignment proves that:
@@ -23,14 +30,36 @@ void Core2_Main(void)
      */
     g_Core2MainEntered = 1U;
 
-    /*
-     * Temporary application placeholder.
-     *
-     * The CM7_2 FreeRTOS scheduler and TaskB set will replace this loop
-     * after the boot synchronization path is independently proven.
-     */
-    for (;;)
-    {
-        /* Intentionally empty. */
-    }
+	/*
+	 * Initialization local to CM7_2.
+	 */
+	BspInitStatusType bspStatus;
+
+	bspStatus = Bsp_Core2Init();
+	if (bspStatus != BSP_INIT_SUCCESS)
+	{
+		return APP_FATAL_INTERRUPT_INIT;
+	}
+
+
+	/*
+	 * CM7_2-owned application resources.
+	 */
+	/* Initialise timebase + create task(s) */
+	BspTimebase_Init();
+
+	if (AppTasks_CreateB() != pdPASS)
+	{
+		return APP_FATAL_TASK_CREATE;
+	}
+
+	/*
+	 * Task handles exist before the STM channels are started.
+	 */
+	BspTimebase_Start();
+
+	vTaskStartScheduler();
+
+
+	return APP_FATAL_SCHEDULER_RETURNED;
 }

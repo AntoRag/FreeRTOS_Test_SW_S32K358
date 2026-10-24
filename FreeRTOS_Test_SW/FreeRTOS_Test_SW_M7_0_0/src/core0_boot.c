@@ -6,10 +6,10 @@
  */
 
 
+#include <bsp_init.h>
 #include "core0_boot.h"
 #include "boot_sync.h"
 
-#include "bsp_init.h"
 
 AppFaultCodeType Core0_Boot(void)
 {
@@ -33,6 +33,8 @@ AppFaultCodeType Core0_Boot(void)
     }
 
     BootSync_PrimaryPublishSystemReady();
+
+    Bsp_ReleaseCore2();
 
     return APP_FATAL_NONE;
 }
