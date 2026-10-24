@@ -204,6 +204,118 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Deviations/issues | Malloc-failure and stack-overflow hooks were linked but not deliberately triggered. Dynamic heap-1 remains a bring-up exception. |
 | Follow-up | Checkpoint the hook configuration, then configure the first CM7_0 STM compare channel for a 10 ms task release. |
 
+### RUN-20261024-005 - H1A CM7_0 STM periodic task release
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Uncommitted STM working tree based on the earlier H1A checkpoints; exact reproducible identity remains pending commit |
+| Core(s) | STM and task-release experiment on `M7_0_0` |
+| Clock configuration | FreeRTOS tick 1 kHz; `STM_0` counter configured at 1 MHz; continuous compare periods 10,000, 100,000, and 1,000,000 counts |
+| Cache/MPU state | Startup MPU and instruction/data caches enabled; FreeRTOS task MPU disabled |
+| Test ID(s) | `H1A-STM-TASKA10MS` |
+| Preconditions | `RUN-20261024-004` passed; STM0 channels 0/1/2 and `STM0_IRQn` configured; `TaskA_10ms` blocks on a direct task notification |
+| Procedure/command | Build and flash the current group, let the target run, suspend it in S32DS, and inspect the FreeRTOS tick, fatal state, Idle counter, STM channel interrupt counters, task handle, and `TaskA_10ms` execution count |
+| Expected result/tolerance | Fatal state remains zero; Idle activity continues; all three STM counters advance at nominal 10/100/1000 ms ratios; every channel-0 interrupt releases one `TaskA_10ms` execution with no accumulated backlog under the no-load test |
+| Actual result | At the captured halt, `xTickCount=10331`, `g_Core0Stm10msInterruptCount=1037`, `g_Core0Stm100msInterruptCount=103`, `g_Core0Stm1000msInterruptCount=10`, `g_Core0TaskA10msExecutionCount=1037`, `g_Core0IdleIterationCount=68751812`, the task handle was non-null, and `g_Core0FatalError=0`. The observed interrupt ratios match the configured periods, and the 10 ms interrupt and task-execution counts match exactly. |
+| Outcome | `PASS` for the functional `STM_0 CH0 -> ISR notification -> TaskA_10ms` path and simultaneous 10/100/1000 ms STM cadence |
+| Evidence paths | `evidence/H1/2026-10-24/cm7-0-stm-taska10ms-pass.png` (SHA-256 `2C73DE9EC7570E6F76063B8A2918EC7DCD311F0B40C6F681F9FE6C739CAE7692`) |
+| Deviations/issues | A debugger counter snapshot proves functional delivery and absence of backlog in this run, but does not measure ISR-to-task latency or independently prove immediate preemption before the next kernel tick. Exact board/probe versions and the build log remain to be archived. |
+| Follow-up | Perform a behavior-preserving source split and repeat this regression; then add and independently verify `TaskA_100ms`, followed by `TaskA_1000ms`. |
+
+### RUN-20261024-006 - H1A source-split regression
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Uncommitted refactored working tree; checkpoint pending |
+| Core(s) | Refactored application on `M7_0_0` |
+| Clock configuration | FreeRTOS tick 1 kHz; `STM_0` counter 1 MHz; continuous compare periods 10,000, 100,000, and 1,000,000 counts |
+| Cache/MPU state | Startup MPU and instruction/data caches enabled; FreeRTOS task MPU disabled |
+| Test ID(s) | `H1A-SOURCE-SPLIT-REGRESSION` |
+| Preconditions | `RUN-20261024-005` passed; application code split into fault, task, board-initialization, timebase, and FreeRTOS-hook modules |
+| Procedure/command | Build and flash the refactored CM7_0 application, run it on the board, suspend it in S32DS, and inspect the same task, STM, tick, Idle, and fatal-state variables used in the pre-refactor test |
+| Expected result/tolerance | The refactor preserves behavior: fatal state remains zero; Idle and tick counts advance; the STM counters retain nominal 10:1 and 100:1 relationships; and the 10 ms interrupt count equals the `TaskA_10ms` execution count |
+| Actual result | At the captured halt, `xTickCount=19463`, `g_Core0Stm10msInterruptCount=1954`, `g_Core0Stm100msInterruptCount=195`, `g_Core0Stm1000msInterruptCount=19`, `g_Core0TaskA10msExecutionCount=1954`, `g_Core0IdleIterationCount=129516624`, the task handle was non-null, and `g_Core0FatalError=0`. The interrupt ratios remain nominal and the 10 ms interrupt-to-task counts match exactly. |
+| Outcome | `PASS` for behavior preservation across the source split |
+| Evidence paths | `evidence/H1/2026-10-24/cm7-0-source-split-regression-pass.png` (SHA-256 `2428A79A3F5530EA7309D5C0AB01BC214F1F9F568B869A269727FD11E2E5ED21`) |
+| Deviations/issues | This is debugger-snapshot evidence; an archived clean-build console log and precise interrupt-to-task latency measurement remain open. The next experiment intentionally introduces both remaining CM7_0 tasks together at the operator's request, rather than the normal one-variable-per-board-experiment preference. |
+| Follow-up | Complete the minor application-interface cleanup, then add `TaskA_100ms` and `TaskA_1000ms` and verify that each task-execution counter matches its dedicated STM-channel interrupt counter. |
+
+### RUN-20261024-007 - H1A complete CM7_0 periodic task set
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Uncommitted CM7_0 three-task working tree; checkpoint pending |
+| Core(s) | Complete `TaskA` periodic set on `M7_0_0` |
+| Clock configuration | FreeRTOS tick 1 kHz; `STM_0` counter 1 MHz; continuous compare periods 10,000, 100,000, and 1,000,000 counts |
+| Cache/MPU state | Startup MPU and instruction/data caches enabled; FreeRTOS task MPU disabled |
+| Test ID(s) | `H1A-TASKA-PERIODIC-SET` |
+| Preconditions | `RUN-20261024-006` passed; all three task handles are created before the STM channels start; task priorities are rate-monotonic (`10 ms > 100 ms > 1000 ms > Idle`) |
+| Procedure/command | Add `TaskA_100ms` and `TaskA_1000ms` to the existing `TaskA_10ms` application, connect each STM callback to its dedicated task notification, build and flash, run on the board, suspend CM7_0, and inspect the task-execution, interrupt, tick, Idle, and fatal-state counters |
+| Expected result/tolerance | Fatal state remains zero; Idle and kernel tick advance; STM counts retain nominal 100:10:1 cadence; every task-execution count equals its corresponding interrupt count, allowing a transient difference of one if halted between ISR entry and task execution |
+| Actual result | At the captured halt, `xTickCount=34443`, `g_Core0Stm10msInterruptCount=3460`, `g_Core0Stm100msInterruptCount=346`, `g_Core0Stm1000msInterruptCount=34`, and the corresponding task-execution counts were exactly `3460`, `346`, and `34`. `g_Core0IdleIterationCount=229182094`, the displayed 10 ms task handle was non-null, and `g_Core0FatalError=0`. Execution of the 100 ms and 1000 ms tasks also demonstrates that their handles were valid when notified. |
+| Outcome | `PASS` for the complete CM7_0 three-rate periodic task skeleton |
+| Evidence paths | `evidence/H1/2026-10-24/cm7-0-three-periodic-tasks-pass.png` (SHA-256 `DCEFC1F7A214812FDF8130248742D32A363436BBAFF0A3CB3D331748A506EFD3`) |
+| Deviations/issues | The 100 ms and 1000 ms tasks were introduced together by explicit operator choice after their STM channels had already been independently exercised. Counter equality proves functional releases without observed backlog in this run, but does not measure interrupt-to-task latency. Minor public-interface naming/comment cleanup remains before checkpointing. A clean-build log was not archived. |
+| Follow-up | Apply the remaining naming/interface cleanup, perform one final build/regression, checkpoint the CM7_0 task set, then implement the independent `TaskB` set on `M7_0_2`. |
+
+### RUN-20261024-008 - H1A interface-cleanup regression
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-24 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | Existing onboard PEmicro/OpenSDA path; exact firmware version not yet recorded |
+| S32DS version | 3.6.5 |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0 |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH` |
+| Git commit/build ID | Uncommitted CM7_0 cleanup working tree; checkpoint pending |
+| Core(s) | Complete `TaskA` periodic set on `M7_0_0` |
+| Clock configuration | FreeRTOS tick 1 kHz; `STM_0` counter 1 MHz; continuous compare periods 10,000, 100,000, and 1,000,000 counts |
+| Cache/MPU state | Startup MPU and instruction/data caches enabled; FreeRTOS task MPU disabled |
+| Test ID(s) | `H1A-INTERFACE-CLEANUP-REGRESSION` |
+| Preconditions | `RUN-20261024-007` passed; public counter declarations, task creation prototype, and per-channel task comments were cleaned up |
+| Procedure/command | Rebuild and run the modified application on the board, suspend CM7_0, and compare all three STM interrupt counters with their corresponding task-execution counters while checking tick, Idle, and fatal state |
+| Expected result/tolerance | The source-only cleanup preserves the complete periodic-task behavior and produces no fatal state |
+| Actual result | At the captured halt, `xTickCount=37678`, STM interrupt counts were `3623`, `362`, and `36`, and the corresponding task-execution counts were exactly `3623`, `362`, and `36`. `g_Core0IdleIterationCount=250719941`, the displayed 10 ms task handle was non-null, and `g_Core0FatalError=0`. |
+| Outcome | `PASS` for functional behavior preservation after the interface cleanup |
+| Evidence paths | `evidence/H1/2026-10-24/cm7-0-cleanup-regression-pass.png` (SHA-256 `8DF3C7602E912A47BD9C951E580A77BB47B2BF4EEBF26CC17B93B92A66E0BED1`) |
+| Deviations/issues | After the captured hardware run, the three release APIs received the final symbol-only capitalization correction from `...FromIsr` to the accepted `...FromISR` convention. Static inspection confirmed that declarations, definitions, and callers agree and that no stale `FromIsr` symbol remains. The operator subsequently confirmed a successful rebuild. A clean-build console log was not archived. |
+| Follow-up | Checkpoint the CM7_0 task set, then begin the independent CM7_2 `TaskB` implementation. |
+
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
 ## Run template
@@ -254,7 +366,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
 | H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
-| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-004 | CM7_0 scheduler and Idle/diagnostic-hook normal path passed; negative-hook tests, FreeRTOS MPU gate, STM release, CM7_2 scheduling, and simultaneous AMP task execution remain open |
+| H1/2 Dual-core AMP FreeRTOS and observability | IN PROGRESS | RUN-20261024-008 | The complete CM7_0 `TaskA` set retained exact interrupt-to-execution count equality after interface cleanup, and its public symbols are now consistent; precise preemption latency, negative-hook tests, FreeRTOS MPU gate, CM7_2 `TaskB` scheduling, and simultaneous AMP execution remain open |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
 | H5 Timers/timebase | PLANNED | - | |

@@ -70,7 +70,7 @@ Rules: ASCII, one record per CRLF-terminated line, fixed field order per record 
 - Use only `...FromISR` APIs from interrupt context and honor the port's maximum syscall interrupt priority.
 - Prefer direct-to-task notifications for one-to-one events; queues for copied messages; mutexes only for ownership with priority inheritance.
 - Implement every periodic activity as an independent task that blocks on its own task notification. Do not use `vTaskDelay()` or `vTaskDelayUntil()` as the application cyclic-release mechanism.
-- Use one core-owned STM instance with continuous compare channels for the 10 ms, 100 ms, and 1000 ms releases. Each compare ISR releases the A and B tasks in its rate class with ISR-safe task notifications.
+- Use one core-owned STM instance with continuous compare channels for the 10 ms, 100 ms, and 1000 ms releases. Each compare ISR releases exactly one local task with an ISR-safe task notification: the corresponding A-family task on `M7_0_0` or B-family task on `M7_0_2`.
 - Enable preemption (`configUSE_PREEMPTION == 1`) and request a context switch from the ISR when a higher-priority task becomes ready.
 - Use 10 ms, 100 ms, and 1000 ms rate classes. Give tasks in the same class equal priority and never depend on their relative execution order. Order classes rate-monotonically: 10 ms above 100 ms above 1000 ms.
 - Assign STM interrupt priorities within the FreeRTOS port's permitted syscall-interrupt range before calling any `...FromISR` API.

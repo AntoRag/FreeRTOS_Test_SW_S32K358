@@ -54,10 +54,13 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 
 ## D-007 - Test software architecture
 
-- Status: PROPOSED
+- Status: ACCEPTED
 - Date: 2026-10-23
-- Decision: separate `app`, target-independent `test`, `bsp`, and NXP `platform` layers.
-- Reason: preserves test intent across physical hardware, QEMU, and later ASIC models.
+- Decision: separate application-task logic, FreeRTOS hooks, board initialization, timer adaptation, target-independent tests, and NXP-generated platform code. Keep `main.c` as orchestration only.
+- Initial source modules: `app_tasks.c/.h` owns task functions, handles, creation, release interfaces, and execution counters; `bsp_init.c/.h` adapts clock and interrupt initialization; `bsp_timebase.c/.h` adapts STM initialization, channel control, and callbacks; `freertos_hooks.c` owns the configured application hooks. The exact directory hierarchy may evolve without changing these ownership boundaries.
+- Dependency rule: application tasks may depend on FreeRTOS but not on STM or generated NXP configuration symbols. The STM callback layer releases tasks only through the public `app_tasks` ISR interface.
+- Refactoring rule: establish this split without changing timing, task priorities, initialization order, counter semantics, or runtime behavior; clean-build and repeat `RUN-20261024-005` before adding another task.
+- Reason: preserves test intent across physical hardware, QEMU, and later ASIC models while keeping generated RTD dependencies behind a thin board-support boundary.
 
 ## D-008 - Initial project source
 
@@ -69,11 +72,11 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 
 ## D-009 - FreeMASTER role
 
-- Status: PROPOSED
+- Status: ACCEPTED
 - Date: 2026-10-23
-- Decision: Do not treat FreeMASTER as part of FreeRTOS or as a prerequisite for the kernel. Retain it only if we deliberately use it for runtime variable observation, signal recording, parameter tuning, or application commands.
-- Current state: the SDK is attached to both core projects, but the firmware does not currently initialize or poll the FreeMASTER driver.
-- Recommendation: keep the first UART test protocol independent of FreeMASTER; evaluate FreeMASTER later as an additional engineering observability channel.
+- Decision: Do not treat FreeMASTER as part of FreeRTOS or as a prerequisite for the kernel. It is removed from the active baseline and deferred until a deliberate runtime-observability use case is implemented.
+- Current state: the firmware does not initialize or poll FreeMASTER. It is therefore not a current hardware-model dependency.
+- Integration boundary: keep the first UART test protocol independent of FreeMASTER; if FreeMASTER is reintroduced, add its exact transport peripheral to `PERIPHERALS_USED.md` only when runtime code actually uses it.
 
 ## D-010 - Multicore configuration ownership
 
@@ -105,8 +108,10 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 
 - Status: ACCEPTED
 - Date: 2026-10-23
-- Decision: In each AMP image, implement every periodic activity as an independent FreeRTOS task with its own activation state. Establish 10 ms, 100 ms, and 1000 ms rate classes. The baseline contains an A and B task in every class: `TaskA_10ms`, `TaskB_10ms`, `TaskA_100ms`, `TaskB_100ms`, `TaskA_1000ms`, and `TaskB_1000ms`.
-- Original scheduling policy: tasks were to self-release using `vTaskDelayUntil()`. This portion is superseded by D-014; task independence, rate classes, task set, and priority ordering remain accepted.
+- Revised: 2026-10-24
+- Decision: Implement one independent periodic task per rate class in each AMP image. The lockstep application image `M7_0_0` owns the `TaskA` family: `TaskA_10ms`, `TaskA_100ms`, and `TaskA_1000ms`. The independent-core image `M7_0_2` owns the `TaskB` family: `TaskB_10ms`, `TaskB_100ms`, and `TaskB_1000ms`. `CM7_1` is the lockstep checker and does not execute another task set. The baseline therefore contains six application tasks total, not six tasks per core.
+- Naming invariant: `TaskA` always identifies execution by the `M7_0_0` lockstep application image; `TaskB` always identifies execution by the `M7_0_2` image. A task-family letter must never be reused on the other image.
+- Original scheduling policy: tasks were initially to self-release using `vTaskDelayUntil()`. This portion is superseded by D-014; task independence, the three rate classes, and rate-monotonic priority ordering remain accepted.
 - Background policy: use the FreeRTOS Idle task and a strictly non-blocking Idle hook as the per-core background activity. Do not create a separate background application task in the baseline.
 - Reason: independent task state and timing make interference, starvation, WCET, missed releases, and peripheral-model behavior observable without coupling unrelated tests through one dispatcher.
 
@@ -114,7 +119,7 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 
 - Status: ACCEPTED
 - Date: 2026-10-23
-- Decision: Application periodic tasks do not self-release with FreeRTOS delay APIs. On each core, three continuous STM compare channels generate the 10 ms, 100 ms, and 1000 ms activation interrupts. Each channel releases the A and B tasks in its rate class using ISR-safe FreeRTOS task notifications.
+- Decision: Application periodic tasks do not self-release with FreeRTOS delay APIs. On each core, three continuous STM compare channels generate the 10 ms, 100 ms, and 1000 ms activation interrupts. Each channel releases exactly one task in the local image using an ISR-safe FreeRTOS task notification: an A-family task on `M7_0_0` or a B-family task on `M7_0_2`.
 - Preemption policy: set `configUSE_PREEMPTION = 1`. After releasing tasks, the ISR requests the FreeRTOS port context switch when required, so a newly readied higher-priority task preempts lower-priority application work.
 - Ownership policy: use a core-owned STM instance and route its interrupts to that core. Freeze exact STM instances and channel numbers only after S32 Configuration Tools validates the two AMP configurations and their interrupt ownership.
 - Kernel-tick boundary: the FreeRTOS tick remains enabled for kernel services and timeouts but is not the application cyclic-task activation source.
@@ -130,10 +135,18 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Reason: the NXP FreeRTOS MPU port changes linker layout, task creation, system-call wrappers, and per-task access policy. Separating scheduler bring-up from those changes gives a known-good diagnostic baseline without abandoning MPU isolation as an architectural goal.
 - Compliance boundary: hardware MPU enablement, FreeRTOS task isolation, and lockstep are safety mechanisms but do not by themselves establish an ISO 26262 or ASIL claim.
 
+## D-016 - Device-model hardware inventory
+
+- Status: ACCEPTED
+- Date: 2026-10-24
+- Decision: Maintain `docs/PERIPHERALS_USED.md` as the single living inventory of exact hardware modules required by the current firmware, with one description of how each module is used.
+- Inclusion rule: list a module only when executed startup, RTD, kernel, or application code accesses its register block or depends on its interrupt/exception behavior. Installed drivers, included headers, linked-but-unreached code, and configured clock gates alone do not qualify.
+- Scope rule: the inventory is the union of both AMP images and does not carry a core-ownership field; a module required by either image is a requirement for the device model.
+- Maintenance rule: update the inventory whenever software development introduces or removes a hardware dependency. Real-board and QEMU outcomes remain in `TEST_LOG.md`, not in the inventory.
+
 ## Open decisions
 
 - Full package/build identifiers and applicable safety documentation to freeze beyond S32DS 3.6.5, RTD 7.0.0, GCC 10.2, and FreeRTOS V11.1.0.
-- Whether FreeMASTER is useful enough to include in the baseline; it is not required for the first UART protocol.
 - Debug probe/firmware and whether onboard OpenSDA or an external PEmicro probe is the primary path.
 - Git repository boundary: entire workspace versus only source project plus documentation (recommended: exclude `.metadata` and generated build output).
 - Coding standard target (project convention only, MISRA-oriented, or formal MISRA compliance).

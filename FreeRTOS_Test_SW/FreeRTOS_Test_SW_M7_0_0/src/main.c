@@ -32,124 +32,72 @@
 extern "C"{
 #endif
 
+
 /* Including necessary configuration files. */
 #include "Mcal.h"
 
+/* include our headers */
+#include "app_fault.h"
+#include "app_tasks.h"
+#include "bsp_init.h"
+#include "bsp_timebase.h"
 
-/* FreeRTOS kernel interfaces. */
-#include "FreeRTOS.h"
-#include "task.h"
-#include <stdint.h>
 
 /* Scheduler-smoke configuration. */
-#define APP_TASK_10MS_PRIORITY       (tskIDLE_PRIORITY + 3U)
-#define APP_TASK_10MS_STACK_DEPTH    (256U)
 
-#define APP_FATAL_NONE               (0U)
-#define APP_FATAL_TASK_CREATE        (1U)
-#define APP_FATAL_SCHEDULER_RETURNED (2U)
-#define APP_FATAL_MALLOC_FAILED       (3U)
-#define APP_FATAL_STACK_OVERFLOW      (4U)
 
-static TaskHandle_t s_Core0TaskA10msHandle = NULL;
-
-volatile uint32_t g_Core0IdleIterationCount = 0U;
-volatile uint32_t g_Core0TaskA10msStarted        = 0U;
-volatile uint32_t g_Core0TaskA10msReleaseCount   = 0U;
-volatile uint32_t g_Core0TaskA10msExecutionCount = 0U;
-volatile uint32_t g_Core0FatalError              = APP_FATAL_NONE;
-
-/* vApplicationIdleHook() is our background activity. It must never block. */
-void vApplicationIdleHook(void)
+static void App_Halt(void)
 {
-    g_Core0IdleIterationCount++;
-}
-
-
-/* vApplicationMallocFailedHook() captures failures from the temporary dynamic-allocation configuration. */
-void vApplicationMallocFailedHook(void)
-{
-    g_Core0FatalError = APP_FATAL_MALLOC_FAILED;
-
-    taskDISABLE_INTERRUPTS();
-
     for (;;)
     {
-        /* Fatal error: FreeRTOS heap allocation failed. */
-    }
-}
-
-/*vApplicationStackOverflowHook() captures stack corruption detected during context switching*/
-void vApplicationStackOverflowHook(
-    TaskHandle_t taskHandle,
-    char *taskName
-)
-{
-    (void)taskHandle;
-    (void)taskName;
-
-    g_Core0FatalError = APP_FATAL_STACK_OVERFLOW;
-
-    taskDISABLE_INTERRUPTS();
-
-    for (;;)
-    {
-        /* Fatal error: task stack corruption detected. */
-    }
-}
-
-/* Initial task used to validate notification blocking. */
-static void App_TaskA10ms(void *pvParameters)
-{
-    uint32_t notificationCount;
-
-    (void)pvParameters;
-
-    g_Core0TaskA10msStarted = 1U;
-
-    for (;;)
-    {
-        notificationCount = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-        g_Core0TaskA10msReleaseCount += notificationCount;
-        g_Core0TaskA10msExecutionCount++;
+        /* Some error occurred, inspect g_Core0FatalError */
     }
 }
 
 
 int main(void)
 {
-    BaseType_t taskCreateResult;
 
-    taskCreateResult = xTaskCreate(
-		App_TaskA10ms,
-			"C0_TaskA10ms",
-			APP_TASK_10MS_STACK_DEPTH,
-			NULL, APP_TASK_10MS_PRIORITY,
-			&s_Core0TaskA10msHandle
-			);
+	/* Initialize BPS (Clock + Interrupts) */
+	BspInitStatusType bspStatus;
 
-    if (taskCreateResult != pdPASS)
+	bspStatus = Bsp_Init();
+
+	switch (bspStatus)
+	{
+	case BSP_INIT_CLOCK_FAILURE:
+		AppFault_Set(APP_FATAL_CLOCK_INIT);
+		App_Halt();
+		break;
+	case BSP_INIT_INTERRUPT_FAILURE:
+		AppFault_Set(APP_FATAL_INTERRUPT_INIT);
+		App_Halt();
+		break;
+	case BSP_INIT_SUCCESS:
+	default:
+		AppFault_Set(APP_FATAL_NONE);
+		break;
+	}
+
+    /* Initialise timebase + create task(s) */
+	BspTimebase_Init();
+
+    if (AppTasks_Create() != pdPASS)
     {
-		g_Core0FatalError = APP_FATAL_TASK_CREATE;
-        for(;;)
-        {
-			/* Task creation failed, inspect g_Core0FatalError */
-        }
+        AppFault_Set(APP_FATAL_TASK_CREATE);
+        App_Halt();
     }
+
+    /*
+     * Task handles exist before the STM channels are started.
+     */
+    BspTimebase_Start();
 
     vTaskStartScheduler();
 
-    /*
-    * A correctly started scheduler never returns.
-    * Reaching this point is always an error.
-    */
-    g_Core0FatalError = APP_FATAL_SCHEDULER_RETURNED;
+    AppFault_Set(APP_FATAL_SCHEDULER_RETURNED);
 
-    for (;;)
-    {
-        /* Fatal state. */
-    }
+    App_Halt();
 
 }
 

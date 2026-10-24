@@ -10,6 +10,7 @@ Before doing project work, read these files in order:
 4. `docs/DECISIONS.md`
 5. `docs/AMP_FREERTOS_ARCHITECTURE.md`
 6. `docs/TEST_LOG.md`
+7. `docs/PERIPHERALS_USED.md`
 
 Operating rules:
 
@@ -23,6 +24,7 @@ Operating rules:
 - Preserve exact tool, SDK, RTD, board, probe, build-configuration, and firmware versions in test evidence.
 - Keep tests deterministic, independently runnable, bounded by timeouts, and machine-readable.
 - Avoid coupling test logic directly to NXP-generated symbols. Use a thin board/support layer so the same test intent can run on hardware and QEMU.
+- Update `docs/PERIPHERALS_USED.md` whenever executed firmware introduces or removes a hardware-module dependency.
 - Prefer the smallest safe step and one newly introduced variable per board experiment.
 
-Current status: hardware gate H0 has passed. The current two-image baseline is still bare-metal. The accepted next architecture is AMP with one independent single-core FreeRTOS V11.1.0 instance per existing project/ELF; SMP is explicitly rejected. H1A integrates and proves the primary-core kernel before H1B repeats the process on the secondary core.
+Current status: hardware gate H0 has passed. Both AMP images contain independent single-core FreeRTOS V11.1.0 integrations; SMP is explicitly rejected. On `M7_0_0`, the complete STM0-released `TaskA` set at 10/100/1000 ms and the Idle hook have passed on real hardware with exact interrupt-to-execution count equality. The next implementation step is the independent `TaskB` set on `M7_0_2`, followed by simultaneous dual-image validation.
