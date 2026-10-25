@@ -15,6 +15,11 @@
 **/Debug_RAM/
 **/Release_RAM/
 
+# Versioned milestone/release archives (distinct from S32DS build output)
+!release/
+!release/.gitkeep
+!release/*.7z
+
 # Compiler, linker, and image artifacts
 *.o
 *.obj
