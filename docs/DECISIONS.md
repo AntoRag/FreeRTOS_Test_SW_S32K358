@@ -2,6 +2,8 @@
 
 Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 
+Superseded decisions retain historical terminology and evidence boundaries. For the current boot/status contract use D-024/D-025; for STM tests and hardware/QEMU results use D-026/D-027. Historical pending steps are not a current work list.
+
 ## D-001 - Real hardware is the reference oracle
 
 - Status: ACCEPTED
@@ -42,6 +44,7 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Status: PROPOSED
 - Date: 2026-10-23
 - Decision: Prefer static allocation for FreeRTOS kernel objects and fixed-capacity test infrastructure. Dynamic allocation is allowed only for a test whose subject is allocation behavior.
+- Current bring-up exception: both images still use `xTaskCreate()` with the generated heap-1 allocator and static allocation disabled. This temporary configuration is recorded by the hardware runs; migration to the proposed static policy remains open.
 - Reason: deterministic resource use and reproducible failure behavior.
 
 ## D-006 - Host control channel
@@ -178,7 +181,7 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Date: 2026-10-24
 - Decision: Preserve the toolchain and NXP runtime entry sequence in both images: the linker entry remains `Reset_Handler`, the startup assembly performs C-runtime initialization, and then calls the standard C `main()`. Each `main()` is a minimal adapter into project-owned functions rather than being renamed or replaced in startup/linker configuration.
 - Primary image: `M7_0_0` follows `Reset_Handler -> main() -> Core0_Boot() -> Core0_Main()`. `Core0_Boot()` owns boot coordination and system-global initialization; `Core0_Main()` owns CM7_0-local initialization, CM7_0-owned services, TaskA creation, and scheduler startup.
-- Secondary image: `M7_0_2` follows `Reset_Handler -> main() -> Core2_Boot() -> Core2_Main()`. Hardware arrival at `Core2_Boot()` is already gated by the application-owned MC_ME release; it publishes `CORE2_STARTING` without polling. `Core2_Main()` owns CM7_2-local initialization, CM7_2-owned services, TaskB creation, `CORE2_READY` publication, and scheduler startup.
+- Secondary image: `M7_0_2` follows `Reset_Handler -> main() -> Core2_Boot() -> Core2_Main()`. Hardware arrival at `Core2_Boot()` is already gated by the application-owned MC_ME release; it publishes `APP_CORE_STATE_STARTING` in its V3 slot without polling. `Core2_Main()` owns CM7_2-local initialization, CM7_2-owned services, TaskB creation, `APP_CORE_STATE_READY` publication, and scheduler startup.
 - Naming boundary: these functions are logical software entrypoints inside the existing two application ELFs. They do not create a separately linked or independently updateable bootloader. A future bootloader/application split would require separate images, flash partitions, validation, and controlled handover and is outside this decision.
 - Migration rule: first perform a behavior-preserving CM7_0 source refactor and repeat the existing TaskA hardware regression. Add mailbox state, `MC_ME` release, and the CM7_2 application path only in later experiments so each hardware test introduces one architectural variable.
 - Reason: the split makes boot ownership explicit and testable while retaining the generated startup, debugger expectations, C-runtime initialization, and QEMU-compatible ELF entry semantics.
@@ -202,6 +205,7 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Date: 2026-10-24
 - Decision: Use the generated multicore Launch Group for normal interactive debugging of the AMP system. A primary-only debug launch that leaves `CM7_2` halted is diagnostic-only and is not an accepted execution or qualification path.
 - STM policy: retain `StmFreezeEnable = true` for normal multicore debugging so the STM timebase stops while the multicore target is halted. The temporary `StmFreezeEnable = false` configuration was used only to isolate the debugger interaction and is not the selected baseline.
+- Configuration boundary: this is an STM `.mex` setting consumed by firmware through generated `Stm_Ip` configuration; it programs the hardware debug-freeze bit, rather than a debugger launch setting. Both current configurations enable it. Enabling freeze also resolved the later reported halt/resume task issue (`RUN-20261025-018`).
 - Evidence: with `STM_0.CR = 0x2F03` (`TEN=1`, `FRZ=1`), a primary-only launch left `STM_0.CNT` and all STM-driven TaskA counters stopped while the FreeRTOS Idle counter advanced. With only `FRZ` cleared, `STM_0.CR` became `0x2F01`, `STM_0.CNT` advanced from `17660025` to `36236283`, and the 10/100/1000 ms interrupt and task-execution counts matched at `256/26/3`. The relevant clock and MC_ME observations were unchanged, isolating STM debug freeze as the cause of the apparent task stoppage.
 - Boundary: this result characterizes debugger behavior; it does not indicate a standalone firmware clock or scheduler failure. Cold-boot behavior must be evaluated without treating a debugger-created core state as the production boot contract.
 
@@ -234,8 +238,8 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Failure containment: if `BspSystem_Init()` fails, `Core0_Boot()` returns a fatal error without executing the MC_ME release, so `CM7_2` remains held. This invariant depends on the debugger and QEMU not independently starting the secondary core.
 - Acknowledgement protocol: the original V2 secondary-only layout is superseded by the symmetric V3 status layout in D-025. The MC_ME boot-gate decision itself remains accepted.
 - Ready boundary: secondary `READY` means CM7_2 local interrupt/timebase initialization and TaskB creation succeeded. It is published immediately before the task-release channels and secondary scheduler are started. `AppFault_Set()` publishes `FAILED` for nonzero local fatal errors, including startup failures and enabled FreeRTOS failure hooks.
-- Primary behavior: CM7_0 does not block its own scheduler startup waiting for the acknowledgement. The V2 fields are currently for debugger/test evidence and future primary supervision. Any future primary wait or health monitor must be bounded and introduced as a separate decision and hardware experiment.
-- Evidence boundary: the V2 code path is implemented but not yet build- or hardware-confirmed. The fixed linker placement, MPU attributes, and primary-owned ECC initialization were proven for the same storage by `RUN-20261025-015`; that earlier run proved protocol V1 and must not be cited as evidence for V2 state publication.
+- Primary behavior: CM7_0 does not block its own scheduler startup waiting for the acknowledgement. Current V3 slots are for debugger/test evidence and future primary supervision. Any future primary wait or health monitor must be bounded and introduced as a separate decision and hardware experiment.
+- Evidence boundary: V2 is historical and superseded by D-025. `RUN-20261025-017` confirms the current V3 READY/error publication on both cores; controlled FAILED publication, warm resets, primary supervision, and standalone no-debugger cold boot remain open. `RUN-20261025-015` establishes the earlier V1 storage/ECC and debug-assisted runtime baseline, not V3 publication.
 
 ## D-025 - Shared AMP implementation with image-local configuration and symmetric diagnostics
 
@@ -247,7 +251,7 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Diagnostic contract: boot-status protocol V3 retains the fixed 256-byte `.boot_mailbox` linker reservation for compatibility but exposes `g_AppSystemStatus` with `core[APP_CORE_PRIMARY]` and `core[APP_CORE_SECONDARY]`. Each slot contains state and fatal error. CM7_0 initializes the complete object while CM7_2 is held; afterward each core writes only its own slot through `AppSystemStatus_PublishCurrentCore()` and `AppFault_Set()`.
 - Local runtime diagnostics: each ELF exposes the same image-local symbols `g_AppTaskDiagnostics[APP_TASK_RATE_COUNT]`, `g_BspTimebaseInterruptCount[APP_TASK_RATE_COUNT]`, and `g_AppIdleIterationCount`. The selected ELF/debug session supplies core and TaskA/TaskB context, avoiding duplicated core-specific APIs and scalar counters.
 - Readiness semantics: both cores publish `READY` after local NVIC/STM initialization and task creation, before starting STM releases and their scheduler. The status object is diagnostic/persistent state, not a release barrier; MC_ME remains the only CM7_2 boot gate.
-- Evidence boundary: `RUN-20261025-017` hardware-confirms the common-source BSP/timebase/task-diagnostics refactor, magic/version, both `READY` states, and zero fatal errors. Build console/ELF/map identities and standalone cold boot remain unarchived; warm-reset behavior and primary acknowledgement reaction remain open.
+- Evidence boundary: `RUN-20261025-017` hardware-confirms the common-source BSP/timebase/task-diagnostics refactor, magic/version, both `READY` states, and zero fatal errors. Release archives now retain later ELF/map pairs and manifests (`RELEASES.md`); the exact binaries and build consoles from that screenshot-only run were not captured. Standalone cold boot, warm-reset behavior, and primary acknowledgement reaction remain open.
 
 ## D-026 - Per-core STM test channel and debugger-selected test IDs
 
@@ -270,13 +274,20 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - QEMU evidence: run the same test IDs and command sequence, then compare canonical result values per core. Record unsupported model behavior as an explicit difference; do not substitute host elapsed wall-clock time for STM ticks.
 - Hardware evidence: establish the reference values by running the same firmware/test protocol on the board. Physical jitter can be investigated separately if a later product requirement needs real-time guarantees, with its own target and tolerance.
 
+## D-028 - Overview landing page and separate component guides
+
+- Status: ACCEPTED
+- Date: 2026-10-25
+- Decision: the repository README provides the project overview, release table, and navigation links. Component-specific implementation, configuration, commands, and result interpretation belong in separate guides under `docs/test_sw/`, beginning with `STM.md`. Build/debug operation belongs in `BUILD_AND_DEBUG.md`.
+- Maintenance: add a component guide and its README link when introducing another testSW component. Keep release provenance in `RELEASES.md`, current architectural status in the living context/architecture documents, and dated observations in `TEST_LOG.md`. Preserve published archive contents as historical snapshots.
+- Reason: the landing page remains usable as the number of peripheral test components grows.
+
 ## Open decisions
 
 - Full package/build identifiers and applicable safety documentation to freeze beyond S32DS 3.6.5, RTD 7.0.0, GCC 10.2, and FreeRTOS V11.1.0.
 - Debug probe/firmware and whether onboard OpenSDA or an external PEmicro probe is the primary path.
-- Git repository boundary: entire workspace versus only source project plus documentation (recommended: exclude `.metadata` and generated build output).
 - Coding standard target (project convention only, MISRA-oriented, or formal MISRA compliance).
-- Host-runner language and artifact format.
+- Automated test host-runner language/protocol remains open. Release packaging is already implemented separately in Python with `.7z` archives; GitHub-runner automation is future work.
 - Required QEMU machine/core configuration and currently implemented peripherals.
-- Warm-reset generation/stale-state handling and primary reaction to a `CORE2_FAILED` or missing `CORE2_READY` acknowledgement.
+- Warm-reset generation/stale-state handling and primary reaction to a secondary V3 `FAILED` state or missing `READY` acknowledgement.
 - Available lab equipment: oscilloscope/logic analyzer, CAN interface, LIN interface, Ethernet peer, loopback wiring, and SD card.

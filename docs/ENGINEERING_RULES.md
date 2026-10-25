@@ -1,6 +1,6 @@
 # Engineering Rules
 
-These rules are proposed defaults until accepted in `DECISIONS.md`.
+Accepted choices are recorded in `DECISIONS.md`; proposals there remain proposals. This document describes engineering policy, while `PROJECT_CONTEXT.md` and `TEST_LOG.md` distinguish implemented behavior from future work.
 
 ## Architecture
 
@@ -12,6 +12,8 @@ Keep four layers with one-way dependencies:
 4. `platform` - NXP RTD/S32 Configuration Tools adapters and generated configuration.
 
 Test cases must not reach directly into generated configuration symbols when a board/platform adapter can express the intent. Hardware and QEMU builds should share the same test layer.
+
+Current implementation boundary: per-image `bsp_platform_config.c` descriptors isolate generated configuration names. The common STM runner still uses the RTD `Stm_Ip` API/types directly; a fully target-independent peripheral API and the transport/registry layer are not yet implemented. Board and QEMU are intended to execute the same STM firmware.
 
 ## C naming convention
 
@@ -58,6 +60,7 @@ Rules: ASCII, one record per CRLF-terminated line, fixed field order per record 
 - Every test restores the peripheral to a documented state or requests a controlled reset.
 - Seed pseudo-random patterns explicitly and report the seed.
 - Separate semantic tolerances from host wall-clock timing.
+- Use the same test software on board and QEMU and require matching canonical result values (D-027). Phase-dependent raw readings must be made deterministic or explicitly excluded from that contract before claiming parity. Physical jitter measurement is not a release gate.
 - Record caches, clock frequencies, optimization level, and execution location (FLASH/RAM).
 - Check guards around DMA buffers and apply explicit cache maintenance.
 - Do not use logging from timing-critical ISR paths; record compact events and drain them later.
@@ -77,6 +80,7 @@ Rules: ASCII, one record per CRLF-terminated line, fixed field order per record 
 - Instrument pending releases and execution counts, but do not impose an overrun handling policy until one is explicitly accepted.
 - Use the kernel Idle task/Idle hook as background activity. The Idle hook must remain non-blocking, bounded, and free of peripheral waits or functional tests that may stall.
 - Prefer static allocation for kernel objects in the test harness.
+- Current bring-up exception: both images use dynamic `xTaskCreate()` with heap-1; `configSUPPORT_STATIC_ALLOCATION=0` and `configSUPPORT_DYNAMIC_ALLOCATION=1`. Static allocation remains proposed (D-005), rather than an already implemented feature.
 - Enable and prove assertions, stack-overflow detection, and useful high-water/runtime diagnostics.
 - Keep interrupt priority assignments in one reviewed table.
 

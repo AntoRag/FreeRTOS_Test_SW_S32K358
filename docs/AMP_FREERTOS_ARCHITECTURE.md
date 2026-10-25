@@ -28,8 +28,9 @@ H0 was the historical bare-metal baseline. The current projects are no longer ba
 - both images contain independent FreeRTOS V11.1.0 kernels and generated `FreeRTOSConfig.h` files;
 - both configurations use `configNUMBER_OF_CORES = 1`, and SMP remains disabled;
 - `M7_0_0` executes the STM0-released TaskA set and `M7_0_2` executes the STM2-released TaskB set;
-- `RUN-20261025-015` proves simultaneous hardware execution with exact interrupt-to-task count equality and fatal states zero;
-- commit `49b4ad7` is the checkpoint for that proven runtime baseline.
+- `RUN-20261025-015` / commit `49b4ad7` established the initial simultaneous runtime;
+- `RUN-20261025-016/017` / commit `2ce2e7e` confirm the common-source refactor, exact observed interrupt-to-task count equality, protocol-V3 READY states, and zero fatal errors;
+- release `v0.1.0` packages that common runtime, and `v0.2.0` adds the CH3 STM tests functionally passed in `RUN-20261025-018/019/020`. Exact packaged revisions and artifacts are recorded in `RELEASES.md`.
 
 The installed S32DS 3.6.5 PlatformSDK provides:
 
@@ -60,17 +61,19 @@ The implemented sequence is:
 1. `CM7_0` performs reset/startup processing, including 64-bit ECC initialization of the complete shared-SRAM range through `0x204C0000`.
 2. `Core0_Boot()` initializes symmetric boot-status protocol V3 and calls `BspSystem_Init()`, which initializes the Power IP support and the global clock tree. A failure returns without releasing CM7_2.
 3. After successful global initialization, `CM7_0` invokes `Power_Ip_SetMode()` to apply the generated MC_ME boot-address/core-clock configuration and release CM7_2.
-4. `Core0_Main()` uses the common `BspCore_Init()` and `BspTimebase_Init()` implementations with its image-local RTD descriptor, creates TaskA, publishes primary `READY`, starts the three STM0 channels, and starts the primary scheduler.
-5. Hardware release transfers CM7_2 through its reset/vector path to `Core2_Boot()`, which publishes `CORE2_STARTING` without polling.
-6. `Core2_Main()` uses the same common core/timebase implementations with its own image-local RTD descriptor, creates TaskB, publishes secondary `READY`, starts the three STM2 channels, and starts the secondary scheduler. A returned fatal error is published as secondary `FAILED` by `AppFault_Set()`.
+4. `Core0_Main()` uses the common `BspCore_Init()` and `BspTimebase_Init()` implementations with its image-local RTD descriptor, initializes the CH3 runner with `StmTest_Init()`, creates TaskA, publishes primary `READY`, starts STM0 task-release channels 0-2, and starts the primary scheduler.
+5. Hardware release transfers CM7_2 through its reset/vector path to `Core2_Boot()`, which publishes `APP_CORE_STATE_STARTING` in the secondary slot without polling. This can execute concurrently with step 4 after release.
+6. `Core2_Main()` uses the same common core/timebase/test initialization with its own image-local RTD descriptors, creates TaskB, publishes secondary `READY`, starts STM2 task-release channels 0-2, and starts the secondary scheduler. A returned fatal error is published as secondary `FAILED` by `AppFault_Set()`.
 
-CM7_0 does not currently wait for `CORE2_READY`; the acknowledgement is exposed for debugger/test evidence and future bounded primary supervision.
+CM7_0 does not currently wait for the secondary `APP_CORE_STATE_READY`; the acknowledgement is exposed for debugger/test evidence and future bounded primary supervision.
 
 `Clock_Ip_Init()` belongs to the primary-only system path because it programs global clock hardware. `IntCtrl_Ip_Init()` belongs to each core-local path because each Cortex-M7 application core controls its own NVIC/vector context. `Stm_Ip_Init()` is called once by the owner of the selected physical STM instance; another image must not reinitialize that same instance.
 
 During bring-up, the debugger group launch may attach to both cores, but it must not replace or pre-empt the application-owned MC_ME release. The same ownership is required from QEMU; an environment that independently starts CM7_2 violates the selected boot contract.
 
 For normal interactive hardware debugging, use the multicore Launch Group so both core sessions have an explicit, coordinated debugger state. A primary-only launch that leaves `CM7_2` halted is diagnostic-only: hardware testing showed that an asserted multicore debug state can freeze `STM_0` when `StmFreezeEnable` is set even while `CM7_0` and its FreeRTOS Idle task continue executing. The selected baseline therefore keeps STM debug freeze enabled and coordinates both cores through the Launch Group; debugger-created core release remains separate from the standalone boot design.
+
+`StmFreezeEnable` is an STM configuration setting in each `.mex`. Generated data is consumed by firmware `Stm_Ip_Init()` to program the hardware freeze bit; it is not a launch-configuration option. Both core-owned STM instances currently enable it. The later halt/resume task issue was resolved by enabling freeze, as reported with `RUN-20261025-018`.
 
 The stock PEmicro S32K358 startup macro is not compatible with application-owned MC_ME boot when executed unmodified. Inspection showed that it installs temporary SRAM vectors, rewrites both cores' MC_ME control/boot-address state, and resets both cores. The confirmed local diagnostic workaround is to rename `S32K358.mac` so the debugger cannot execute it, following the analogous NXP S32K324 guidance. Because the macro also initialized SRAM through DMA, firmware startup must independently establish ECC for every RAM region it will use. The CM7_0 startup owns this operation and its existing 64-bit shared-SRAM loop must include the mailbox through address `0x204BFFFF`. No debugger script is part of the deployable boot contract.
 
@@ -84,7 +87,7 @@ The status object is not ordinary per-image storage. Protocol V3 reserves the sa
 
 For every state transition, the publishing core writes its own error payload, executes `dmb sy`, and then writes its own state. A consumer executes a matching barrier after observing the state and before reading the error. `volatile` prevents inappropriate compiler treatment of shared fields but does not replace ordering barriers. Because the barrier does not flush cache lines, changing the region to cacheable memory would require an additional reviewed cache-coherency protocol.
 
-Both core slots use `RESET`, `STARTING`, `READY`, and `FAILED`. `READY` is published after local interrupt/timebase initialization and task creation but before that core's STM releases and scheduler startup. Nonzero fatal errors publish `FAILED` through the common `AppFault_Set()` path. `RUN-20261025-016` hardware-confirms the common BSP/timebase/task-diagnostics path on both cores, but did not directly observe this V3 object. Protocol-V3 state publication, warm-reset generation handling, and primary acknowledgement reaction remain open.
+Both core slots use `RESET`, `STARTING`, `READY`, and `FAILED`; no V3 `WAITING` state exists. `READY` is published after local interrupt/timebase/test initialization and task creation but before that core's STM releases and scheduler startup. Nonzero fatal errors publish `FAILED` through the common `AppFault_Set()` path. `RUN-20261025-017` directly confirms magic `0x41535453`, version `3`, both READY states, and zero fatal errors. Controlled failure publication, warm-reset handling, and primary acknowledgement reaction remain open.
 
 ### Shared-code boundary across two ELFs
 
@@ -117,7 +120,9 @@ The minimum H1D proof set is:
 
 The six application tasks are implemented and hardware-proven. The CM7_2 Idle-hook counter is the remaining item in this minimum set. Debugger-visible names retain the family and period, for example `TaskA_10ms` in the primary image and `TaskB_10ms` in the secondary image; the ELF/debug session supplies the physical-core context. Both generated configurations use `configMAX_TASK_NAME_LEN=20`, which accommodates the current names. Source-level functions use module prefixes and functional names; the A/B identifiers remain stable core-family names even when the task workload later receives a purpose-specific test name.
 
-Prefer static allocation. Each task has separate file-static TCB and stack storage, for example `s_taskA10msTcb` and `s_taskA10msStack`. Period constants include units, such as `APP_TASK_PERIOD_10_MS`; STM compare values are derived from the configured STM clock, not from FreeRTOS ticks. Initial instrumentation maintains at least activation and completed-execution counters; detailed deadline and WCET policy is deferred. Measurements from the two independent STM counters are not assumed to be phase-aligned across cores.
+Current allocation is dynamic: each image creates its three tasks with `xTaskCreate()` using heap-1, 256-word stack depths, and priorities Idle+3/2/1 for 10/100/1000 ms respectively. Both configurations disable static allocation. File-static TCB/stack storage is a proposed migration under D-005, not current code. The image-local binding defines `BSP_STM_10MS_TICKS`, `BSP_STM_100MS_TICKS`, and `BSP_STM_1000MS_TICKS` as 10,000/100,000/1,000,000 for the 1 MHz counter. `executionCount` increments immediately after consuming a notification, before that activation's workload runs; it counts entries rather than completed workloads. Detailed deadline and WCET policy is deferred. Measurements from the two independent STM counters are not assumed to be phase-aligned across cores.
+
+CM7_0 enables Idle, malloc-failure, and stack-overflow Method 2 hooks. CM7_2 contains matching hook definitions but its generated options disable all three. Definition alone is not evidence that a hook is enabled or exercised.
 
 ## STM activation path
 
@@ -130,6 +135,14 @@ Each periodic task spends its inactive time blocked on its own notification; it 
 An activation received while a task is still executing cannot create a second concurrent invocation of that task. The notification can record a pending release, but the policy for coalescing, queuing, skipping, or faulting on overruns is deliberately deferred. Initial instrumentation records activation and execution counts so overruns are observable without yet defining their product reaction.
 
 Every STM interrupt that calls a FreeRTOS `...FromISR` API must use an interrupt priority allowed by the port's maximum-syscall-priority configuration.
+
+### STM characterization path
+
+CH3 belongs to the local `stm_test` runner, initialized before task creation. `TaskA_10ms` and `TaskB_10ms` call `StmTest_Task10ms()` after each notification; the CH3 callbacks only record events through `StmTest_NotifyFromISR()`. No additional test task is created. Generated bindings remain image-local, although the common runner still depends on RTD `Stm_Ip` APIs and types.
+
+Stable IDs 1-4 cover one-shot IRQ, continuous IRQ, four nonzero modular counter deltas, and compare readback. The runner selects one-shot/continuous mode by copying the generated CH3 descriptor. It does not reset the STM instance or modify task-release channels 0-2. Command/result globals are image-local. Bounds are measured in 10 ms task activations and depend on that task/timebase progressing; they are not an independent watchdog.
+
+`RUN-20261025-018/019/020` record functional passes on both instances. Physical jitter is not a release gate. Raw sampling-dependent values still require a deterministic comparison contract before exact-value QEMU parity can be claimed (D-027).
 
 ## Bring-up sub-gates
 

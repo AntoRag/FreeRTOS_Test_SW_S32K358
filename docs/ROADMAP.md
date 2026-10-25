@@ -1,6 +1,6 @@
 # Phased Roadmap
 
-The phases are sequential baselines, not calendar estimates. Each phase adds one class of uncertainty and ends with a physical-board gate. QEMU replay begins as soon as the model can boot the corresponding image.
+The phases describe coverage and exit criteria, not calendar estimates. The AMP runtime is the common foundation. A focused test from a later phase may be introduced before the full transport or earlier peripheral gates are complete; this does not mark those gates passed. Each hardware phase ends with board evidence. QEMU execution and exact-value parity are additional gates when the model can boot the corresponding image.
 
 ## Phase 0 - Reproducible baseline
 
@@ -40,7 +40,7 @@ Staged work and evidence:
 3. **H1C - simultaneous AMP (`FUNCTIONAL PASS`):** group-launch both images and prove both independent task counters progress without observed asserts or resets. `RUN-20261025-015` proves this runtime behavior with both fatal states zero and exact interrupt-to-task count equality; exact ELF/map artifacts were not archived for a formal memory-overlap check.
 4. **H1D - independent timing-task model (`IMPLEMENTED`, observability incomplete):** the A-family and B-family 10/100/1000 ms task sets and their dedicated STM0/STM2 releases are hardware-proven. CM7_2 Idle-hook parity, separate LED/trace indications, and the initial LPUART6 reporting service are not implemented or proven yet.
 
-Current combined-gate status (2026-10-25): `IN PROGRESS`. The dual-core scheduler/task runtime sub-gate passed and is checkpointed by commit `49b4ad7`. The complete H1/2 exit criteria below have not all been satisfied.
+Current combined-gate status (2026-10-25): `IN PROGRESS`. Commit `49b4ad7` established the dual-core runtime; `2ce2e7e` and `RUN-20261025-016/017` confirm the common-source implementation and both protocol-V3 READY/error slots. Releases `v0.1.0` and `v0.2.0` retain later ELF/map pairs and manifests. Original screenshot-only run identities and full build logs remain incomplete; the complete H1/2 exit criteria below have not all been satisfied.
 
 Engineering work:
 
@@ -69,6 +69,8 @@ QEMU gate Q1/2: run the same two AMP images and test command sequence, then comp
 ## Phase 3 - Versioned test harness
 
 Objective: turn examples into a reusable validation product.
+
+Current subset: STM tests already have stable enum IDs and image-local debugger command/result structures. The transport, text parser, enumeration/abort commands, and general registry below are still planned; the local STM interface does not qualify the full H3 gate.
 
 Work:
 
@@ -100,9 +102,11 @@ Objective: extend and stress the STM activation baseline and characterize additi
 
 Tests: PIT/STM periodic and one-shot interrupts, wraparound, priority/nesting, ISR-to-task notification behavior, and timeout behavior. Run the same tests on hardware and QEMU and compare canonical result values. External frequency/latency/jitter measurements are not a release or model-parity requirement.
 
-Current checkpoint (2026-10-25): debugger-selected STM tests are implemented on the unused channel 3 of each core-owned instance. Stable test IDs `STM-001` through `STM-004` cover one-shot compare interrupt, continuous compare interrupt, counter monotonicity, and compare readback. The application runner uses the existing 10 ms task on each core and does not alter periodic channels 0-2. STM-001..004 have passed functional checks on CM7_0/STM0_CH3 (`RUN-20261025-018` and `RUN-20261025-019`) and CM7_2/STM2_CH3 (`RUN-20261025-020`). Before claiming H5/QEMU parity, complete the remaining wraparound/priority/notification/timeout tests and make canonical outputs deterministic so the same test software can report matching values on board and model. Physical jitter measurement is not a gate (D-027).
+Current checkpoint (2026-10-25): debugger-selected STM tests are implemented on channel 3 of each core-owned instance. Stable test IDs `STM-001` through `STM-004` cover one-shot compare interrupt, continuous compare interrupt, nonzero modular counter deltas, and compare readback. The runner uses the existing 10 ms task on each core and preserves periodic channels 0-2. STM-001..004 have functionally passed on CM7_0/STM0_CH3 (`RUN-20261025-018/019`) and CM7_2/STM2_CH3 (`RUN-20261025-020`). Release `v0.2.0` packages this implementation with both ELF/map pairs. Remaining coverage includes wraparound, priority/nesting, ISR-to-task notification behavior, and timeout paths; the exact-value output contract also remains open. Physical jitter measurement is not a gate (D-027).
 
-Hardware/model gate H5: the same timer/interrupt test software completes on hardware and QEMU, and all canonical result fields match exactly per core. Make phase-sensitive measurements deterministic or exclude them from the canonical result contract; physical jitter is not required. See D-027.
+Hardware gate H5: the scoped timer/interrupt tests complete on the board with their specified functional results and recorded binary/test evidence. Complete remaining coverage before marking the full phase passed. Physical jitter measurement is not required.
+
+QEMU gate Q5 / parity: execute the same firmware/test protocol on QEMU and require all canonical result fields to match the board reference exactly per core. Make phase-sensitive measurements deterministic or explicitly exclude them from the comparison contract before claiming parity (D-027). QEMU availability does not prevent recording a hardware pass.
 
 ## Phase 6 - LPUART transport and data-path stress
 
@@ -169,4 +173,4 @@ Objective: make hardware-vs-QEMU comparison routine.
 
 Work: automated host runner, target capability discovery, allowed-difference manifest, golden semantic traces, CI-friendly exit status, coverage matrix, and release report.
 
-Exit: every claimed QEMU/ASIC feature maps to a stable test ID, a real-board `H_PASS`, a model `Q_PASS`, and an reviewed parity result.
+Exit: every claimed QEMU/ASIC feature maps to a stable test ID, a real-board `H_PASS`, a model `Q_PASS`, and a reviewed parity result.

@@ -2,6 +2,8 @@
 
 Hardware gate H0 passed on 2026-10-23. The dual-core AMP scheduler/task runtime sub-gate passed on 2026-10-25 in `RUN-20261025-015` and is checkpointed by commit `49b4ad7`. The complete combined H1/2 gate remains in progress because not all roadmap exit criteria have been exercised.
 
+Later runs `RUN-20261025-016/017` confirm the common-source runtime and protocol-V3 READY/error slots; `RUN-20261025-018/019/020` functionally pass STM-001..004 on both core-owned CH3 channels. Historical entries retain the symbols, limitations, and planned follow-ups that applied when recorded. Use the phase-gate summary below and current decisions for today's work list; the old V1 mailbox polling/WAITING design has been superseded.
+
 User-provided prerequisite: the FRDM-A-S32K358 board is known working and has already been tested. This is accepted as board-health context, not as a pass result for any project-specific phase gate.
 
 ## Build evidence
@@ -45,6 +47,17 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Warning review | Core 0 full-build summary: 28 compiler warnings from FreeMASTER `freemaster.h` because `FMSTR_PLATFORM_CORTEX_M` and `FMSTR_PLATFORM_S12Z` are tested while undefined under `-Wundef`. The linker also printed three enum-ABI diagnostics for `libc_nano.a`/`libgcc.a`, which were not included in Eclipse's warning count. Core 2's retained log is a later incremental 0-error/0-warning run, so its clean-build warning count was not preserved. |
 | Outcome | PASS for clean artifact generation; warning disposition OPEN; hardware gate not exercised |
 | Follow-up | Preserve full logs for both cores on the next clean qualification build; investigate warning remediation without editing generated or SDK-owned sources; flash and debug both images on the board. |
+
+## Release artifact evidence
+
+Both versioned packages are retained in Git. During the documentation audit on 2026-10-25, both passed `7z t`, their manifests were inspected, and their archive SHA-256 values matched the records in `RELEASES.md`. These checks establish artifact integrity, not a new hardware or compiler test.
+
+| Package | Manifest source commit | Archive commit | Retained products |
+|---|---|---|---|
+| `v0.1.0 Debug_FLASH` | `ed99cc3e6a0997b2fcf33009a25e666bb6e91eba` | `030d0ee` | Two ELF/map pairs, source tree, three launch files, and artifact SHA-256 manifest. |
+| `v0.2.0 Debug_FLASH` | `8b7370d49a6c6208860e0690e9f9a03197b3894c` | `c868d93` | Two ELF/map pairs, source tree including STM tests, three launch files, and artifact SHA-256 manifest. |
+
+Full archive identities are in `RELEASES.md`. Original screenshot-only runs did not capture matching ELF/map hashes, so these later packages must not be presented as proof of their exact tested binary identities. A package-hash-linked board replay and complete build-console logs remain open.
 
 ## Hardware evidence
 
@@ -578,13 +591,13 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Clock configuration | STM0 application timebase configured at 1 MHz; test compare interval 20,000 ticks |
 | Cache/MPU state | Existing application startup configuration; not separately inspected during this run |
 | Test ID(s) | `STM-001` (`g_StmTestCommand=1`, one-shot compare interrupt) |
-| Preconditions | `Core0StmTestChannel` configured on STM0_CH3 with callback and interrupt enabled; STM0_CH0..CH2 remain assigned to TaskA releases. STM freeze was enabled in the debug configuration. |
+| Preconditions | `Core0StmTestChannel` configured on STM0_CH3 with callback and interrupt enabled; STM0_CH0..CH2 remain assigned to TaskA releases. STM debug freeze was enabled through the STM configuration consumed by firmware. |
 | Procedure/command | Run CM7_0 and request STM-001 from the debugger; allow the core to execute to completion, then inspect `g_StmTestResult`. |
 | Expected result/tolerance | `activeTestId=1`, status `PASS` (`2`), exactly one callback, expected callback count `1`, and error `0`; periodic TaskA releases continue while execution runs. |
 | Actual result | Screenshot showed `activeTestId=1`, `status=2`, `callbackCount=1`, `expectedCallbackCount=1`, and `error=0`. The operator also reports that enabling STM freeze resolved the observed periodic-task/debug-stop problem. |
 | Outcome | `PASS` for the CM7_0 STM0_CH3 one-shot compare interrupt smoke test. This does not qualify STM-002..004, CM7_2/STM2_CH3, timing accuracy/jitter, or debugger-independent operation. |
 | Evidence paths | User-supplied debugger screenshot `codex-clipboard-1a9c33e4-a72d-4bb7-a226-c0086415ec86.png`; durable repository copy, build log, and ELF/map files were not archived. |
-| Deviations/issues | Exact launch configuration export and numerical before/after periodic counters were not captured. STM freeze is a debugger configuration setting and must not be interpreted as a firmware runtime requirement. |
+| Deviations/issues | Exact launch configuration export and numerical before/after periodic counters were not captured. Documentation correction: STM freeze is configured in `.mex`/generated firmware and programs hardware halt behavior; it is not a debugger launch option. |
 | Follow-up | Run STM-002, STM-003, and STM-004 on CM7_0, then repeat the bounded characterization on CM7_2/STM2_CH3. Capture build/ELF identity and exact debug freeze setting in the next evidence package. |
 
 ### RUN-20261025-019 - CM7_0 STM continuous, counter, compare-readback, and invalid-ID checks
@@ -606,7 +619,7 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Clock configuration | STM0 application timebase configured at 1 MHz; test compare interval 20,000 ticks |
 | Cache/MPU state | Existing application startup configuration; not separately inspected during this run |
 | Test ID(s) | `STM-002`, `STM-003`, `STM-004`; invalid-command rejection using value `5` (`STM_TEST_ID_COUNT`) |
-| Preconditions | Same STM0_CH3 configuration and debug setup as RUN-20261025-018; STM freeze enabled in the debug configuration. |
+| Preconditions | Same STM0_CH3 configuration and debug setup as RUN-20261025-018; firmware STM configuration enables debug freeze. |
 | Procedure/command | Trigger debugger command IDs 2, 3, and 4 individually; inspect the result structure after each completes. Then submit value 5 to check invalid-ID rejection. |
 | Expected result/tolerance | IDs 2–4 report PASS (`status=2`) with no error and their respective minimum criteria met. Value 5 is not a defined test and must be rejected as invalid (`status=3`, `error=1`). |
 | Actual result | STM-002: `status=2`, `callbackCount=4`, minimum `expectedCallbackCount=3`, `error=0`. STM-003: `status=2`, `lastCounterDeltaTicks=10000`, `error=0`. STM-004: `status=2`, `compareRemainingTicks=19996`, `error=0`. Value 5: `status=3`, `error=1` (`STM_TEST_ERROR_INVALID_ID`), as expected for the sentinel/non-test value. |
@@ -634,7 +647,7 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Clock configuration | STM2 application timebase configured at 1 MHz; test compare interval 20,000 ticks |
 | Cache/MPU state | Existing application startup configuration; not separately inspected during this run |
 | Test ID(s) | `STM-001` through `STM-004`; invalid-command rejection using value `5` (`STM_TEST_ID_COUNT`) |
-| Preconditions | `Core2StmTestChannel` configured on STM2_CH3 with callback and interrupt enabled; STM2_CH0..CH2 remain assigned to TaskB releases. STM freeze enabled in the debug configuration. |
+| Preconditions | `Core2StmTestChannel` configured on STM2_CH3 with callback and interrupt enabled; STM2_CH0..CH2 remain assigned to TaskB releases. Firmware STM configuration enables debug freeze. |
 | Procedure/command | Trigger debugger command IDs 1 through 4 individually on CM7_2; inspect the result structure after each completes. Then submit value 5 to check invalid-ID rejection. |
 | Expected result/tolerance | IDs 1–4 report PASS (`status=2`) with their respective callback/counter/compare criteria and no error. Value 5 is not a defined test and must be rejected as invalid (`status=3`, `error=1`). |
 | Actual result | STM-001: `status=2`, `callbackCount=1`, expected `1`, `error=0`. STM-002: `status=2`, `callbackCount=4`, minimum expected `3`, `error=0`. STM-003: `status=2`, `lastCounterDeltaTicks=9992`, `error=0`. STM-004: `status=2`, `compareRemainingTicks=19997`, `error=0`. Value 5: `status=3`, `error=1` (`STM_TEST_ERROR_INVALID_ID`), as expected for the sentinel/non-test value. |
@@ -697,10 +710,10 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | H1B Secondary FreeRTOS/TaskB runtime | FUNCTIONAL PASS IN INTEGRATED RUN | RUN-20261025-017 | The common-source refactor preserves CM7_2 entry and all three TaskB rates with exact ISR/task-count equality while both images execute. |
 | H1C Simultaneous AMP runtime | FUNCTIONAL PASS | RUN-20261025-017 | Both independently linked common implementations and all six periodic tasks execute with exact ISR/task-count agreement; exact ELF/map artifacts were not archived for a formal overlap check. |
 | H1D Observability completion | IN PROGRESS | RUN-20261025-017 | Generic diagnostics and protocol-V3 magic/version/READY/error fields pass on both cores. CM7_2 Idle-hook parity, distinct LED/trace behavior, and the core-0 UART identity banner remain open. |
-| H1/2 Combined gate | IN PROGRESS | RUN-20261025-017 | Standalone no-debugger cold boot, defined soak/repetition evidence, negative boot/hook tests, UART/LED observability, and durable qualification artifacts remain open. |
-| H3 Test harness | PLANNED | - | |
+| H1/2 Combined gate | IN PROGRESS | RUN-20261025-017 | Standalone cold boot, soak/repetition, negative boot/hook tests, and UART/LED reporting remain open. Release ELF/map artifacts exist; full build logs and exact historic run-to-binary linkage remain incomplete. |
+| H3 Test harness | PARTIAL IMPLEMENTATION; GATE OPEN | RUN-20261025-020 | STM debugger command/result interface exists. General registry, transport/parser, INFO/LIST/ABORT, and host-protocol qualification remain planned. |
 | H4 GPIO/interrupts | PLANNED | - | |
-| H5 Timers/timebase | IN PROGRESS | RUN-20261025-020 | STM-001..004 pass functionally on both CM7_0/STM0_CH3 and CM7_2/STM2_CH3. Remaining functional coverage, deterministic canonical outputs for hardware/QEMU parity, and archived build artifacts remain open; physical jitter is not a gate (D-027). |
+| H5 Timers/timebase | IN PROGRESS | RUN-20261025-020 | STM-001..004 pass functionally on both CH3 channels and v0.2.0 retains ELF/map artifacts. Wraparound, priority/nesting, notification/timeout cases, and package-linked evidence remain open. Exact-value QEMU parity is separate; physical jitter is not a gate (D-027). |
 | H6 LPUART stress | PLANNED | - | |
 | H7 ADC/I2C | PLANNED | - | |
 | H8 LPSPI/eDMA | PLANNED | - | |

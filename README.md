@@ -1,48 +1,48 @@
 # S32K358 FreeRTOS peripheral-test software
 
-This repository contains the S32 Design Studio projects and engineering records for a FreeRTOS-based test application targeting the FRDM-A-S32K358 board. The physical board is the behavioral reference used to validate the corresponding QEMU and future ASIC models.
+Peripheral test software for the NXP **FRDM-A-S32K358** board. The project establishes real-board behavior as the reference for running the same tests on QEMU and future ASIC models.
 
-The accepted runtime architecture is AMP: the two existing projects remain separate images, each with its own single-core FreeRTOS V11.1.0 instance. SMP is intentionally not used. Hardware run `RUN-20261025-015`, checkpointed by commit `49b4ad7`, proves simultaneous execution of the STM0-driven `TaskA` set on `M7_0_0` and the STM2-driven `TaskB` set on `M7_0_2`, with exact interrupt-to-task count equality and both fatal states at zero. The complete combined H1/2 gate remains in progress because standalone cold boot, the CM7_2 readiness acknowledgement, the external UART/LED observability, controlled negative-hook tests, and durable qualification artifacts are still open.
+The application uses AMP: two independently linked images, each with its own single-core FreeRTOS instance. Test components are added incrementally, with their scope, usage, and evidence documented separately.
 
-The `v0.2.0` milestone adds debugger-selected STM characterization tests to the same AMP images: `STM-001..004` have passed functional checks on CM7_0/STM0_CH3 and CM7_2/STM2_CH3. This milestone does not claim complete STM qualification or QEMU parity; those gates remain open as recorded in `docs/ROADMAP.md` and `docs/TEST_LOG.md`.
+## Releases
+
+| Release | What it introduces | Package |
+|---|---|---|
+| **v0.2.0** | First STM peripheral testSW component on both AMP cores. See the [STM guide](docs/test_sw/STM.md). | [Debug_FLASH .7z](release/S32K358_FreeRTOS_v0.2.0_Debug_FLASH.7z) |
+| **v0.1.0** | Initial dual-core AMP FreeRTOS runtime, common support code, diagnostics, shared startup status, and release packaging. | [Debug_FLASH .7z](release/S32K358_FreeRTOS_v0.1.0_Debug_FLASH.7z) |
+
+Packages include source code, prebuilt firmware for both images, debugger launch files, and an artifact manifest. [Release records](docs/RELEASES.md) describe provenance, contents, and packaging instructions.
+
+The current STM component has functional passes on the physical board. Broader coverage and QEMU parity remain open; see the [roadmap](docs/ROADMAP.md) and [test log](docs/TEST_LOG.md) for the evidence and remaining gates.
+
+## Test software components
+
+| Component | Guide | Introduced in |
+|---|---|---|
+| STM | [Scope, configuration, execution, and result interpretation](docs/test_sw/STM.md) | v0.2.0 |
+
+Each future component should have its own guide linked here.
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [Build and debug](docs/BUILD_AND_DEBUG.md) | Tool baseline, workspace setup, builds, debug launches, and host workaround. |
+| [Project context](docs/PROJECT_CONTEXT.md) | Current baseline, platform facts, and evidence boundaries. |
+| [AMP architecture](docs/AMP_FREERTOS_ARCHITECTURE.md) | Initialization ownership, shared support code, task model, and diagnostics. |
+| [Roadmap](docs/ROADMAP.md) | Planned capabilities and hardware/model qualification gates. |
+| [Test log](docs/TEST_LOG.md) | Dated build, artifact, and real-board results. |
+| [Hardware dependencies](docs/PERIPHERALS_USED.md) | Register blocks required by the current firmware and device model. |
+| [Engineering rules](docs/ENGINEERING_RULES.md) and [decisions](docs/DECISIONS.md) | Development policy and accepted/proposed design choices. |
+| [Releases](docs/RELEASES.md) | Published package records and manual packaging workflow. |
+| [References](docs/REFERENCES.md) | External manuals and document identities. |
 
 ## Repository layout
 
-- `FreeRTOS_Test_SW/FreeRTOS_Test_SW_M7_0_0/`: lockstep application-core image (`CM7_0` with `CM7_1` checker).
-- `FreeRTOS_Test_SW/FreeRTOS_Test_SW_M7_0_2/`: independent `CM7_2` image.
-- `docs/`: project context, roadmap, decisions, engineering rules, references, and test evidence.
-- `docs/AMP_FREERTOS_ARCHITECTURE.md`: accepted dual-image RTOS architecture, ownership rules, task model, and bring-up gates.
-- `AGENTS.md`: mandatory context for future Codex agents.
-
-The `.mex` files, S32DS project metadata, launch configurations, startup/linker files, generated configuration, and attached RTD/FreeMASTER sources are intentionally versioned. Managed-build output and Eclipse workspace metadata are intentionally excluded.
-
-## Frozen tool baseline
-
-The initial generated project currently identifies the following toolchain. Confirm these versions on every development host before accepting a build as reproducible:
-
-- S32 Design Studio for S32 Platform: `3.6.5`
-- S32K3 PlatformSDK / Real-Time Drivers: `7.0.0`
-- NXP GCC for Arm bare metal: `10.2`
-- FreeMASTER SDK: `1.5.0`
-- Target: `S32K358`, package `289BGA`
-
-After the controlled **Update Code and Build** cycle on 2026-10-23, both `.mex` files report Clocks tool `19.0`. Their remaining differences are the intentional selected-core and functional-group ownership fields.
-
-## Recreating the workspace after cloning
-
-1. Install S32 Design Studio and the exact SDK versions listed above.
-2. Create or select a new, empty S32DS workspace. Do not reuse or copy the `.metadata` directory from another computer.
-3. Choose **File > Import > General > Existing Projects into Workspace**.
-4. Select the cloned `FreeRTOS_Test_SW` directory as the root and import both core projects without copying them to another location.
-5. Confirm that both projects are open and that their SDK references resolve without errors.
-6. For each project, select it in Project Explorer and run **Update Code and Build**. A plain Build is not sufficient for a project containing a `.mex` configuration.
-7. Verify that both projects build without errors and that the group FLASH launch configurations under the `M7_0_0` project resolve both ELF files.
-
-For the currently installed PEmicro plug-in version `com.pemicro.debug.gdbjtag.pne_6.2.7.202610202056`, the stock S32K358 device macro conflicts with application-owned MC_ME startup. The hardware-proven local workaround is to rename `supportFiles_ARM/NXP/S32K3xx/S32K358.mac` to `S32K358_.mac` before using the multicore FLASH Launch Group. This host-local change can be reverted by an S32DS/PEmicro update and must be checked on every workstation. See D-023 and `RUN-20261025-014` before changing this procedure.
-
-Do not edit files under `generate/` or `board/` manually. Change the corresponding `.mex` configuration and regenerate them. Review generated-code changes through Git before accepting them.
-
-## Hardware evidence
-
-A successful build is not a passed test. Each roadmap phase must be flashed and exercised on the FRDM-A-S32K358, with results recorded in `docs/TEST_LOG.md` before comparison with QEMU.
+- [FreeRTOS_Test_SW/](FreeRTOS_Test_SW/): both application projects and common source code.
+- [docs/](docs/): project and component documentation.
+- [tools/](tools/): release tooling.
+- [release/](release/): retained versioned packages.
+- [evidence/](evidence/): archived verification evidence where available.
+- [AGENTS.md](AGENTS.md): instructions and context for repository agents.
 
