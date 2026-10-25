@@ -82,6 +82,7 @@ extern "C"{
 extern void App_Core2Stm10msCallback(uint8 channel); 
 extern void App_Core2Stm100msCallback(uint8 channel); 
 extern void App_Core2Stm1000msCallback(uint8 channel); 
+extern void App_Core2StmTestCallback(uint8 channel); 
 #define GPT_STOP_SEC_CODE
 #include "Gpt_MemMap.h"
 /*==================================================================================================
@@ -94,7 +95,7 @@ extern void App_Core2Stm1000msCallback(uint8 channel);
 const Stm_Ip_InstanceConfigType STM_2_InitConfig_PB =
 {
     /** @brief STM Freeze Enable */
-    (boolean)(FALSE),
+    (boolean)(TRUE),
 #if(STM_IP_SET_CLOCK_MODE == STD_ON)
     /** @brief STM Alternate Prescaler Value */
     47U,
@@ -106,7 +107,7 @@ const Stm_Ip_InstanceConfigType STM_2_InitConfig_PB =
                 FFh - Divide module clock by 256 */
     47U
 };
-const Stm_Ip_ChannelConfigType STM_2_ChannelConfig_PB[3U] =
+const Stm_Ip_ChannelConfigType STM_2_ChannelConfig_PB[4U] =
 {
     /**@brief Core2Stm10msChannel */ 
     {
@@ -142,6 +143,18 @@ const Stm_Ip_ChannelConfigType STM_2_ChannelConfig_PB[3U] =
         (uint8)2U,
         /** @brief STM channel mode  */
         STM_IP_CH_MODE_CONTINUOUS
+    }
+,
+    /**@brief Core2StmTestChannel */ 
+    {
+        /** @brief STM Channel Id */
+        3U,
+        /** @brief STM callback name */
+        &App_Core2StmTestCallback,
+        /** @brief STM callbackparam */
+        (uint8)3U,
+        /** @brief STM channel mode  */
+        STM_IP_CH_MODE_ONESHOT
     }
 };
 #define GPT_STOP_SEC_CONFIG_DATA_UNSPECIFIED

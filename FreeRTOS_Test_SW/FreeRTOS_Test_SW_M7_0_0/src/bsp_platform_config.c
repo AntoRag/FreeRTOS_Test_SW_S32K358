@@ -8,6 +8,7 @@
 #include "app_core.h"
 #include "bsp_core.h"
 #include "bsp_timebase.h"
+#include "stm_test.h"
 
 #include "IntCtrl_Ip_Cfg.h"
 #include "Stm_Ip_Cfg.h"
@@ -16,6 +17,7 @@
 #define BSP_STM_10MS_TICKS       (10000U)
 #define BSP_STM_100MS_TICKS      (100000U)
 #define BSP_STM_1000MS_TICKS     (1000000U)
+#define BSP_STM_TEST_COMPARE_TICKS (20000U)
 
 static const BspCoreConfigType s_BspCoreConfig =
 {
@@ -34,6 +36,14 @@ static const BspTimebaseConfigType s_BspTimebaseConfig =
     }
 };
 
+/* The test runner owns only CH_3; CH_0..CH_2 remain the TaskA releases. */
+static const StmTestConfigType s_StmTestConfig =
+{
+    STM_0_IP_INSTANCE_NUMBER,
+    STM_0_CH_3,
+    BSP_STM_TEST_COMPARE_TICKS
+};
+
 const BspCoreConfigType *BspCore_GetConfig(void)
 {
     return &s_BspCoreConfig;
@@ -42,4 +52,9 @@ const BspCoreConfigType *BspCore_GetConfig(void)
 const BspTimebaseConfigType *BspTimebase_GetConfig(void)
 {
     return &s_BspTimebaseConfig;
+}
+
+const StmTestConfigType *StmTest_GetConfig(void)
+{
+    return &s_StmTestConfig;
 }

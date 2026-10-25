@@ -660,7 +660,7 @@
                                  <setting name="GptStmModule" value="STM_2"/>
                                  <setting name="GptStmPrescaler" value="48"/>
                                  <setting name="GptStmAlternatePrescaler" value="48"/>
-                                 <setting name="StmFreezeEnable" value="false"/>
+                                 <setting name="StmFreezeEnable" value="true"/>
                                  <array name="GptStmChannels">
                                     <struct name="0">
                                        <setting name="Name" value="Core2Stm10msChannel"/>
@@ -682,6 +682,13 @@
                                        <setting name="StmAbsoluteCounting" value="false"/>
                                        <setting name="StmNotification" value="App_Core2Stm1000msCallback"/>
                                        <setting name="StmChannelMode" value="STM_IP_CH_MODE_CONTINUOUS"/>
+                                    </struct>
+                                    <struct name="3">
+                                       <setting name="Name" value="Core2StmTestChannel"/>
+                                       <setting name="GptStmChannel" value="CH_3"/>
+                                       <setting name="StmAbsoluteCounting" value="false"/>
+                                       <setting name="StmNotification" value="App_Core2StmTestCallback"/>
+                                       <setting name="StmChannelMode" value="STM_IP_CH_MODE_ONESHOT"/>
                                     </struct>
                                  </array>
                               </struct>
@@ -757,8 +764,8 @@
                            <struct name="11">
                               <setting name="Name" value="GptHwConfiguration_11"/>
                               <setting name="GptIsrHwId" value="STM_2_CH_3"/>
-                              <setting name="GptIsrEnable" value="false"/>
-                              <setting name="GptChannelIsUsed" value="false"/>
+                              <setting name="GptIsrEnable" value="true"/>
+                              <setting name="GptChannelIsUsed" value="true"/>
                            </struct>
                         </array>
                         <struct name="GptConfigurationOfOptApiServices">

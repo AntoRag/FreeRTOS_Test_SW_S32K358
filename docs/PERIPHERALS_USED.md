@@ -33,8 +33,8 @@ The table is the union of the two AMP images. Core ownership is intentionally om
 | `PRAMC_0` | `Clock_Ip_Init()` programs the RAM-controller wait-state/flow-through behavior for the configured frequencies. |
 | `PRAMC_1` | `Clock_Ip_Init()` programs the RAM-controller wait-state/flow-through behavior for the configured frequencies. |
 | `PRAMC_2` | `Clock_Ip_Init()` programs the RAM-controller wait-state/flow-through behavior for the configured frequencies. |
-| `STM_0` | Channels 0, 1, and 2 run in continuous compare mode at the configured 1 MHz counter rate. They generate the 10 ms, 100 ms, and 1000 ms activation interrupts and notify `TaskA_10ms`, `TaskA_100ms`, and `TaskA_1000ms`, respectively. |
-| `STM_2` | Channels 0, 1, and 2 run in continuous compare mode at the configured 1 MHz counter rate. They generate the 10 ms, 100 ms, and 1000 ms activation interrupts and notify `TaskB_10ms`, `TaskB_100ms`, and `TaskB_1000ms`, respectively. |
+| `STM_0` | Channels 0, 1, and 2 run in continuous compare mode at the configured 1 MHz counter rate and notify the three CM7_0 TaskA rate classes. Channel 3 (`Core0StmTestChannel`) is reserved for debugger-selected one-shot/continuous STM characterization, counter monotonicity, and compare readback tests. |
+| `STM_2` | Channels 0, 1, and 2 run in continuous compare mode at the configured 1 MHz counter rate and notify the three CM7_2 TaskB rate classes. Channel 3 (`Core2StmTestChannel`) is reserved for the same local STM characterization tests on CM7_2. |
 
 ## Explicitly not in the current inventory
 
@@ -45,4 +45,4 @@ The table is the union of the two AMP images. Core ownership is intentionally om
 
 ## Evidence basis
 
-Current entries were derived from both application images, generated S32 Configuration Tools data, linked `Debug_FLASH` maps, S32K358 device headers, startup code, executed RTD clock/power/interrupt/STM paths, and the FreeRTOS Cortex-M7 port. `RUN-20261025-015` is the current real-board runtime evidence; its working tree is checkpointed by commit `49b4ad7`. A future clean build, standalone cold boot, and QEMU execution remain separate evidence and must be recorded in `docs/TEST_LOG.md`.
+Current entries were derived from both application images, generated S32 Configuration Tools data, linked `Debug_FLASH` maps, S32K358 device headers, startup code, executed RTD clock/power/interrupt/STM paths, and the FreeRTOS Cortex-M7 port. The added channel-3 STM test configuration and runner are implemented but have not yet been built or exercised on hardware; they do not change the module-level dependency inventory. `RUN-20261025-017` remains the real-board evidence for the periodic STM runtime. A clean build, STM-test board runs, standalone cold boot, and QEMU execution are separate evidence and must be recorded in `docs/TEST_LOG.md`.

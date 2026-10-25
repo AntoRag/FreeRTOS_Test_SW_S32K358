@@ -8,6 +8,7 @@
 #include <stddef.h>
 
 #include "app_tasks.h"
+#include "stm_test.h"
 
 volatile AppTaskDiagnosticsType
     g_AppTaskDiagnostics[APP_TASK_RATE_COUNT] = { { 0U, 0U } };
@@ -23,6 +24,9 @@ static void App_TaskB10ms(void *parameters)
         /* Consume one release produced by the local STM 10 ms channel. */
         (void)ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
         g_AppTaskDiagnostics[APP_TASK_RATE_10MS].executionCount++;
+
+        /* Run a bounded STM test step only when requested by the debugger. */
+        StmTest_Task10ms();
 
         /* Future CM7_2 10 ms workload goes here. */
     }

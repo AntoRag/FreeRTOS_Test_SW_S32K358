@@ -12,6 +12,7 @@
 #include "bsp_core.h"
 #include "bsp_timebase.h"
 #include "core2_main.h"
+#include "stm_test.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -55,6 +56,11 @@ AppFaultCodeType Core2_Main(void)
 	if (!BspTimebase_Init())
 	{
 		return APP_FATAL_TIMEBASE_INIT;
+	}
+
+	if (!StmTest_Init())
+	{
+		return APP_FATAL_STM_TEST_INIT;
 	}
 
 	if (AppTasks_Create() != pdPASS)

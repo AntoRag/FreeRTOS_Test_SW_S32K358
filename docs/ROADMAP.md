@@ -100,6 +100,8 @@ Objective: extend and stress the STM activation baseline and characterize additi
 
 Tests: PIT/STM periodic and one-shot interrupts, wraparound, priority/nesting, ISR-to-task notification latency, timeout accuracy, and optional latency measurement with GPIO toggles.
 
+Current checkpoint (2026-10-25): debugger-selected STM tests are implemented on the unused channel 3 of each core-owned instance. Stable test IDs `STM-001` through `STM-004` cover one-shot compare interrupt, continuous compare interrupt, counter monotonicity, and compare readback. The application runner uses the existing 10 ms task on each core and does not alter periodic channels 0-2. STM-001..004 have passed functional checks on CM7_0/STM0_CH3 (`RUN-20261025-018` and `RUN-20261025-019`) and CM7_2/STM2_CH3 (`RUN-20261025-020`); timing accuracy/jitter evidence and archived build artifacts remain pending.
+
 Hardware gate H5: scope/logic-analyzer or debugger timestamp evidence meets defined frequency, jitter, and count tolerances.
 
 ## Phase 6 - LPUART transport and data-path stress

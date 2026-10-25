@@ -24,7 +24,8 @@ typedef enum
     APP_FATAL_STACK_OVERFLOW,
     APP_FATAL_CLOCK_INIT,
     APP_FATAL_INTERRUPT_INIT,
-    APP_FATAL_TIMEBASE_INIT
+    APP_FATAL_TIMEBASE_INIT,
+    APP_FATAL_STM_TEST_INIT
 } AppFaultCodeType;
 
 /* Publish a fatal error in the executing core's shared status slot. */

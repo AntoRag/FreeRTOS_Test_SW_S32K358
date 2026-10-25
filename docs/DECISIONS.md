@@ -249,6 +249,18 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Readiness semantics: both cores publish `READY` after local NVIC/STM initialization and task creation, before starting STM releases and their scheduler. The status object is diagnostic/persistent state, not a release barrier; MC_ME remains the only CM7_2 boot gate.
 - Evidence boundary: `RUN-20261025-017` hardware-confirms the common-source BSP/timebase/task-diagnostics refactor, magic/version, both `READY` states, and zero fatal errors. Build console/ELF/map identities and standalone cold boot remain unarchived; warm-reset behavior and primary acknowledgement reaction remain open.
 
+## D-026 - Per-core STM test channel and debugger-selected test IDs
+
+- Status: ACCEPTED; software implemented, build/hardware validation pending
+- Date: 2026-10-25
+- Decision: preserve STM0 channels 0-2 for CM7_0 TaskA releases and STM2 channels 0-2 for CM7_2 TaskB releases. Reserve STM0_CH3 and STM2_CH3 for local STM characterization, configured in the respective `.mex` files as `Core0StmTestChannel` and `Core2StmTestChannel` with one-shot compare notifications.
+- Execution model: do not add a test task. The existing `TaskA_10ms` and `TaskB_10ms` each advance the same common non-blocking STM test runner compiled into their own ELF. Each ELF has independent debugger-visible command/result globals; this is not a cross-core mailbox or shared test service.
+- Test interface: `g_StmTestCommand` accepts stable numeric enum values, with `0` meaning idle and the command cleared after completion. The result structure is reset when a valid test starts and retains status, callback counts, error code, counter delta, and compare remaining ticks until the next test.
+- Stable ID mapping: `1=STM-001` one-shot compare interrupt, `2=STM-002` continuous compare interrupt, `3=STM-003` counter monotonicity, and `4=STM-004` compare-register readback. These IDs are append-only; never change an existing ID's meaning. The current runtime copies the generated CH3 channel descriptor and changes only its channel mode before `Stm_Ip_InitChannel()`, permitting one-shot and continuous characterization without editing generated files or touching CH0-CH2.
+- Bounded behavior: one-shot waits for one callback and observes three further 10 ms task activations for repeats; continuous mode runs for ten 10 ms activations and requires at least three callbacks; counter monotonicity requires four nonzero modular deltas; compare readback checks that the remaining compare interval is nonzero and no greater than the configured interval. All test work runs from the 10 ms task and has bounded completion.
+- Debugger workflow: trigger only one core's local command at a time for the first board experiment, beginning with `STM-001` on CM7_0. Then qualify the matching local test on CM7_2 before attempting simultaneous test requests.
+- Evidence boundary: the `.mex` and generated STM channel configurations now include CH3 and the application runner is implemented, but no S32DS build or real-board STM-test result has yet been recorded. These tests remain `IMPLEMENTED`, not `H_PASS`.
+
 ## Open decisions
 
 - Full package/build identifiers and applicable safety documentation to freeze beyond S32DS 3.6.5, RTD 7.0.0, GCC 10.2, and FreeRTOS V11.1.0.
