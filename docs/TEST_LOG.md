@@ -548,7 +548,7 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | RTD/SDK version | PlatformSDK/RTD 7.0.0 |
 | FreeRTOS version | V11.1.0, one independent single-core instance per ELF |
 | Build configuration | `Debug_FLASH`; two AMP ELF images observed in their respective debugger contexts |
-| Git commit/build ID | Working tree immediately before checkpoint commit |
+| Git commit/build ID | `2ce2e7e` (`Refactor AMP runtime onto common support layer`) |
 | Core(s) | CPU2 / `M7_0_2` and CPU1 / `M7_0_0` |
 | Test ID(s) | `H1-STATUS-V3-READY` |
 | Procedure/command | Observe `g_AppSystemStatus` and the generic rate-indexed diagnostics while both AMP images execute. |
@@ -557,7 +557,7 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Outcome | `PASS` for protocol-V3 status publication and dual-core READY/error-free runtime observation |
 | Evidence paths | User-supplied debugger screenshots `codex-clipboard-64bb2cd1-611b-4769-b599-6081f57cda8f.png` (CPU2 plus shared status) and `codex-clipboard-2cc33fb9-a2fc-465a-9466-c9b900fb934a.png` (CPU1); durable repository copies and hashes not archived |
 | Deviations/issues | Cold power-cycle, standalone no-debugger execution, soak duration, build console, and exact ELF/map identities remain unarchived. |
-| Follow-up | Commit and push the common-source AMP refactor and aligned documentation; retain standalone cold-boot and QEMU parity as subsequent gates. |
+| Follow-up | Completed: commit `2ce2e7e` pushed to `origin/main`. Retain standalone cold-boot and QEMU parity as subsequent gates. |
 
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
