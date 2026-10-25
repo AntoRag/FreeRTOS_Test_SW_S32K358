@@ -28,17 +28,19 @@ Objective: establish two independent FreeRTOS instances, periodic task execution
 Architecture:
 
 - preserve the existing two projects, two `.mex` files, two linker maps, and two ELF images;
-- run a single-core FreeRTOS V11.1.0 instance in each image (`configUSE_SMP = 0`, `configNUMBER_OF_CORES = 1`);
+- run a single-core FreeRTOS V11.1.0 instance in each image (`configNUMBER_OF_CORES = 1`; the installed generated configuration does not emit a `configUSE_SMP` macro);
 - `M7_0_0` owns global clock/startup policy and the initial UART control channel;
 - `M7_0_2` owns only explicitly assigned resources and never repeats global initialization;
 - keep one owner per peripheral; introduce shared-memory/MU synchronization before any cross-core shared service.
 
 Staged work and evidence:
 
-1. **H1A - primary kernel:** attach the NXP FreeRTOS and Cortex-M7 port components to `M7_0_0`, select FreeRTOS in OSIF, configure one STM compare interrupt, generate, clean-build, flash, start the scheduler, and prove that the interrupt releases and preempts into one blocked task.
-2. **H1B - secondary kernel:** repeat the same integration independently for `M7_0_2`; prove its core-owned STM release path and scheduler before simultaneous execution.
-3. **H1C - simultaneous AMP:** group-launch both images and prove both independent tick counts and task counters progress without asserts, resets, or memory overlap.
-4. **H1D - independent timing-task model:** create the A-family 10 ms, 100 ms, and 1000 ms tasks on `M7_0_0` and the B-family 10 ms, 100 ms, and 1000 ms tasks on `M7_0_2`, for six application tasks total; release each task from its dedicated local STM compare interrupt; use each kernel's Idle task/Idle hook for bounded background activity; assign separate LED/trace indications and route the initial LPUART6 reporting service through `M7_0_0`.
+1. **H1A - primary kernel (`FUNCTIONAL PASS`):** attach the NXP FreeRTOS and Cortex-M7 port components to `M7_0_0`, select FreeRTOS in OSIF, configure one STM compare interrupt, generate, clean-build, flash, start the scheduler, and prove that the interrupt releases into one blocked task. Proven by `RUN-20261024-005` and the complete TaskA regressions. Immediate ISR-to-task preemption latency remains unmeasured.
+2. **H1B - secondary kernel (`FUNCTIONAL PASS` in the integrated run):** repeat the same integration independently for `M7_0_2` and prove its core-owned STM release path and scheduler. `RUN-20261025-015` proves the STM2/TaskB path and scheduler while both images execute; no earlier secondary-only qualification artifact was retained, and immediate preemption latency remains unmeasured.
+3. **H1C - simultaneous AMP (`FUNCTIONAL PASS`):** group-launch both images and prove both independent task counters progress without observed asserts or resets. `RUN-20261025-015` proves this runtime behavior with both fatal states zero and exact interrupt-to-task count equality; exact ELF/map artifacts were not archived for a formal memory-overlap check.
+4. **H1D - independent timing-task model (`IMPLEMENTED`, observability incomplete):** the A-family and B-family 10/100/1000 ms task sets and their dedicated STM0/STM2 releases are hardware-proven. CM7_2 Idle-hook parity, separate LED/trace indications, and the initial LPUART6 reporting service are not implemented or proven yet.
+
+Current combined-gate status (2026-10-25): `IN PROGRESS`. The dual-core scheduler/task runtime sub-gate passed and is checkpointed by commit `49b4ad7`. The complete H1/2 exit criteria below have not all been satisfied.
 
 Engineering work:
 

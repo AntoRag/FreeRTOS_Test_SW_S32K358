@@ -1,6 +1,6 @@
 # Hardware and Model Test Log
 
-Hardware gate H0 passed on 2026-10-23. Later phase gates remain unexecuted.
+Hardware gate H0 passed on 2026-10-23. The dual-core AMP scheduler/task runtime sub-gate passed on 2026-10-25 in `RUN-20261025-015` and is checkpointed by commit `49b4ad7`. The complete combined H1/2 gate remains in progress because not all roadmap exit criteria have been exercised.
 
 User-provided prerequisite: the FRDM-A-S32K358 board is known working and has already been tested. This is accepted as board-health context, not as a pass result for any project-specific phase gate.
 
@@ -479,6 +479,7 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Evidence paths | Debugger screenshots supplied during the session; durable copies and hashes were not archived. Installed renamed macro: `C:/NXP/S32DS.3.6.5/eclipse/plugins/com.pemicro.debug.gdbjtag.pne_6.2.7.202610202056/supportFiles_ARM/NXP/S32K3xx/S32K358_.mac`. NXP source: `https://community.nxp.com/t5/S32-Design-Studio-Knowledge-Base/Dual-cores-debugging-with-PEMicro-s-MULTILINK-by-S32DS-for/ta-p/1478645`. |
 | Deviations/issues | Renaming an installed plug-in file is host-local and may be undone by update/reinstallation. The complete stock macro cannot remain the hidden owner of SRAM initialization. The current CM7_2 static review also found a missing `Stm_Ip_Init()` call, `STM2_IRQn` generated with `undefined_handler` instead of `STM_2_ISR`, and a `void Core2_Main()` returning application fault values. These are not the cause of the earlier CM7_0 mailbox ECC fault but must be corrected before TaskB qualification. |
 | Follow-up | Extend CM7_0 startup shared-SRAM ECC initialization through `0x204C0000`, rebuild both images, then correct the three CM7_2 integration findings and run one bounded dual-core TaskA/TaskB hardware test. |
+| Resolution | Completed by `RUN-20261025-015`; the corrected implementation is checkpointed by commit `49b4ad7`. The host-local PEmicro macro workaround remains required for this installed plug-in version. |
 
 ### RUN-20261025-015 - Simultaneous CM7_0 TaskA and CM7_2 TaskB execution
 
@@ -494,7 +495,7 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | FreeRTOS version | V11.1.0, one independent single-core instance per ELF |
 | Compiler/version | NXP GCC Arm bare metal 10.2 |
 | Build configuration | `Debug_FLASH`; multicore FLASH Launch Group |
-| Git commit/build ID | Uncommitted MC_ME/ECC/TaskB working tree; checkpoint pending |
+| Git commit/build ID | Tested pre-commit working tree subsequently checkpointed without further firmware changes as `49b4ad7` (`feat: validate dual-core AMP FreeRTOS runtime`) |
 | Core(s) | `M7_0_0` and `M7_0_2` executing simultaneously |
 | Clock configuration | STM0 and STM2 configured as independent 1 MHz application timebases with 10/100/1000 ms channels |
 | Cache/MPU state | Startup MPU and instruction/data caches enabled; boot mailbox in shareable non-cacheable SRAM |
@@ -506,7 +507,7 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Outcome | `PASS` for simultaneous dual-image AMP scheduler execution, TaskA/TaskB periodic release, mailbox readiness consumption, application-owned MC_ME release under debug, and debugger-independent mailbox ECC initialization |
 | Evidence paths | Debugger screenshots supplied during the session; durable copies and hashes were not archived |
 | Deviations/issues | A clean-build console log and exact ELF/map identities were not archived. The run used the debugger Launch Group, so standalone power-cycle/cold-boot release without debugger participation remains unconfirmed. `CORE2_READY` publication, failure/timeout/warm-reset cases, and hardware-assisted wake-up remain open. |
-| Follow-up | Create a Git checkpoint for the proven dual-core baseline, then perform a standalone power-cycle test that flashes both images once and observes execution without allowing the debugger to create or release CM7_2 state. |
+| Follow-up | Git checkpoint `49b4ad7` was created and pushed. Next perform a standalone power-cycle test that flashes both images once and observes execution without allowing the debugger to create or release CM7_2 state; separately implement and prove CM7_2 `WAITING`/`READY`/`FAILED` publication. |
 
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
@@ -558,7 +559,11 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
 | H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
-| H1/2 Dual-core AMP FreeRTOS and observability | PASS WITH OPEN FOLLOW-UPS | RUN-20261025-015 | Both independent FreeRTOS schedulers and all six periodic tasks execute simultaneously with exact ISR/task-count agreement and fatal states zero. Standalone no-debugger cold boot, `CORE2_READY`, negative boot-protocol tests, and durable build/evidence artifacts remain open. |
+| H1A Primary FreeRTOS/TaskA runtime | FUNCTIONAL PASS | RUN-20261024-008 | CM7_0 scheduler, STM0 releases, all three TaskA rates, and the CM7_0 Idle hook are hardware-proven; immediate preemption latency remains unmeasured. |
+| H1B Secondary FreeRTOS/TaskB runtime | FUNCTIONAL PASS IN INTEGRATED RUN | RUN-20261025-015 | CM7_2 scheduler, STM2 releases, and all three TaskB rates are hardware-proven while both images execute; no separate secondary-only qualification artifact was retained. |
+| H1C Simultaneous AMP runtime | FUNCTIONAL PASS | RUN-20261025-015 | Both independent schedulers and all six periodic tasks execute simultaneously with exact ISR/task-count agreement and fatal states zero; exact ELF/map artifacts were not archived for a formal overlap check. |
+| H1D Observability completion | IN PROGRESS | RUN-20261025-015 | Six-task counters pass. CM7_2 Idle-hook parity, distinct LED/trace behavior, and the core-0 UART identity banner remain open. |
+| H1/2 Combined gate | IN PROGRESS | RUN-20261025-015 | Standalone no-debugger cold boot, defined soak/repetition evidence, `CORE2_READY`, negative boot/hook tests, UART/LED observability, and durable qualification artifacts remain open. |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
 | H5 Timers/timebase | PLANNED | - | |

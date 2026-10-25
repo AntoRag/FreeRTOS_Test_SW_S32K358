@@ -2,7 +2,7 @@
 
 This repository contains the S32 Design Studio projects and engineering records for a FreeRTOS-based test application targeting the FRDM-A-S32K358 board. The physical board is the behavioral reference used to validate the corresponding QEMU and future ASIC models.
 
-The accepted runtime architecture is AMP: the two existing projects remain separate images, each with its own single-core FreeRTOS instance. SMP is intentionally not used. The current H0 commit is still a verified bare-metal baseline; FreeRTOS integration is staged under the combined Phase 1/2 plan in `docs/AMP_FREERTOS_ARCHITECTURE.md`.
+The accepted runtime architecture is AMP: the two existing projects remain separate images, each with its own single-core FreeRTOS V11.1.0 instance. SMP is intentionally not used. Hardware run `RUN-20261025-015`, checkpointed by commit `49b4ad7`, proves simultaneous execution of the STM0-driven `TaskA` set on `M7_0_0` and the STM2-driven `TaskB` set on `M7_0_2`, with exact interrupt-to-task count equality and both fatal states at zero. The complete combined H1/2 gate remains in progress because standalone cold boot, the CM7_2 readiness acknowledgement, the external UART/LED observability, controlled negative-hook tests, and durable qualification artifacts are still open.
 
 ## Repository layout
 
@@ -35,6 +35,8 @@ After the controlled **Update Code and Build** cycle on 2026-10-23, both `.mex` 
 5. Confirm that both projects are open and that their SDK references resolve without errors.
 6. For each project, select it in Project Explorer and run **Update Code and Build**. A plain Build is not sufficient for a project containing a `.mex` configuration.
 7. Verify that both projects build without errors and that the group FLASH launch configurations under the `M7_0_0` project resolve both ELF files.
+
+For the currently installed PEmicro plug-in version `com.pemicro.debug.gdbjtag.pne_6.2.7.202610202056`, the stock S32K358 device macro conflicts with application-owned MC_ME startup. The hardware-proven local workaround is to rename `supportFiles_ARM/NXP/S32K3xx/S32K358.mac` to `S32K358_.mac` before using the multicore FLASH Launch Group. This host-local change can be reverted by an S32DS/PEmicro update and must be checked on every workstation. See D-023 and `RUN-20261025-014` before changing this procedure.
 
 Do not edit files under `generate/` or `board/` manually. Change the corresponding `.mex` configuration and regenerate them. Review generated-code changes through Git before accepting them.
 
