@@ -251,7 +251,7 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 
 ## D-026 - Per-core STM test channel and debugger-selected test IDs
 
-- Status: ACCEPTED; software implemented, build/hardware validation pending
+- Status: ACCEPTED; STM-001..004 functional checks hardware-passed on both application cores
 - Date: 2026-10-25
 - Decision: preserve STM0 channels 0-2 for CM7_0 TaskA releases and STM2 channels 0-2 for CM7_2 TaskB releases. Reserve STM0_CH3 and STM2_CH3 for local STM characterization, configured in the respective `.mex` files as `Core0StmTestChannel` and `Core2StmTestChannel` with one-shot compare notifications.
 - Execution model: do not add a test task. The existing `TaskA_10ms` and `TaskB_10ms` each advance the same common non-blocking STM test runner compiled into their own ELF. Each ELF has independent debugger-visible command/result globals; this is not a cross-core mailbox or shared test service.
@@ -259,7 +259,16 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Stable ID mapping: `1=STM-001` one-shot compare interrupt, `2=STM-002` continuous compare interrupt, `3=STM-003` counter monotonicity, and `4=STM-004` compare-register readback. These IDs are append-only; never change an existing ID's meaning. The current runtime copies the generated CH3 channel descriptor and changes only its channel mode before `Stm_Ip_InitChannel()`, permitting one-shot and continuous characterization without editing generated files or touching CH0-CH2.
 - Bounded behavior: one-shot waits for one callback and observes three further 10 ms task activations for repeats; continuous mode runs for ten 10 ms activations and requires at least three callbacks; counter monotonicity requires four nonzero modular deltas; compare readback checks that the remaining compare interval is nonzero and no greater than the configured interval. All test work runs from the 10 ms task and has bounded completion.
 - Debugger workflow: trigger only one core's local command at a time for the first board experiment, beginning with `STM-001` on CM7_0. Then qualify the matching local test on CM7_2 before attempting simultaneous test requests.
-- Evidence boundary: the `.mex` and generated STM channel configurations now include CH3 and the application runner is implemented, but no S32DS build or real-board STM-test result has yet been recorded. These tests remain `IMPLEMENTED`, not `H_PASS`.
+- Evidence boundary: RUN-20261025-018/019 pass STM-001..004 on CM7_0/STM0_CH3 and RUN-20261025-020 passes them on CM7_2/STM2_CH3. These are hardware functional results; QEMU parity is a separate gate and requires matching canonical test outputs.
+
+## D-027 - Peripheral model parity uses matching test outputs, not physical jitter
+
+- Status: ACCEPTED
+- Date: 2026-10-25
+- Decision: validate the same test software on the physical board and QEMU, and compare its canonical result values. Do not require physical scope/logic-analyzer jitter measurements as a release or parity gate; they do not establish that QEMU returns the same test results.
+- Parity contract: deterministic outputs such as test ID, status, error, and specified event counts must match the hardware reference exactly. A test is not ready for exact-value parity while its exported result depends on asynchronous sampling phase. Raw `lastCounterDeltaTicks`, `compareRemainingTicks`, and phase-dependent callback totals must either be made deterministic by the test design or explicitly kept out of the canonical comparison result.
+- QEMU evidence: run the same test IDs and command sequence, then compare canonical result values per core. Record unsupported model behavior as an explicit difference; do not substitute host elapsed wall-clock time for STM ticks.
+- Hardware evidence: establish the reference values by running the same firmware/test protocol on the board. Physical jitter can be investigated separately if a later product requirement needs real-time guarantees, with its own target and tolerance.
 
 ## Open decisions
 

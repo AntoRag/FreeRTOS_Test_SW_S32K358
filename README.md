@@ -4,6 +4,8 @@ This repository contains the S32 Design Studio projects and engineering records 
 
 The accepted runtime architecture is AMP: the two existing projects remain separate images, each with its own single-core FreeRTOS V11.1.0 instance. SMP is intentionally not used. Hardware run `RUN-20261025-015`, checkpointed by commit `49b4ad7`, proves simultaneous execution of the STM0-driven `TaskA` set on `M7_0_0` and the STM2-driven `TaskB` set on `M7_0_2`, with exact interrupt-to-task count equality and both fatal states at zero. The complete combined H1/2 gate remains in progress because standalone cold boot, the CM7_2 readiness acknowledgement, the external UART/LED observability, controlled negative-hook tests, and durable qualification artifacts are still open.
 
+The `v0.2.0` milestone adds debugger-selected STM characterization tests to the same AMP images: `STM-001..004` have passed functional checks on CM7_0/STM0_CH3 and CM7_2/STM2_CH3. This milestone does not claim complete STM qualification or QEMU parity; those gates remain open as recorded in `docs/ROADMAP.md` and `docs/TEST_LOG.md`.
+
 ## Repository layout
 
 - `FreeRTOS_Test_SW/FreeRTOS_Test_SW_M7_0_0/`: lockstep application-core image (`CM7_0` with `CM7_1` checker).

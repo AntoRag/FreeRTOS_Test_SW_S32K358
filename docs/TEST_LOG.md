@@ -613,7 +613,7 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Outcome | `PASS` for STM-002..004 on CM7_0/STM0_CH3 and for rejection of the invalid command value. The value-5 FAIL result is expected input validation, not a peripheral test failure. |
 | Evidence paths | User-supplied screenshots `codex-clipboard-c1909fdf-83c3-409c-beda-bf351b35c5e4.png` (ID 2), `codex-clipboard-dd039b39-ae4c-4940-ba58-63b365939f30.png` (ID 3), `codex-clipboard-fcc21ce6-8508-4430-9b61-699564fb9db7.png` (ID 4), and `codex-clipboard-fc7aa848-0288-40d2-9820-ff7804b2e858.png` (invalid value 5); durable repository copies and build artifacts not archived. |
 | Deviations/issues | Exact launch configuration export, numerical periodic-task counts, and ELF/map identities were not captured. The compare readback result is a register-value sanity check, not a timing-accuracy measurement. |
-| Follow-up | Repeat STM-001..004 on CM7_2/STM2_CH3. Then add timing accuracy/jitter evidence and archive build/ELF/map identities before claiming H5 complete. |
+| Follow-up | Repeat STM-001..004 on CM7_2/STM2_CH3 (completed in RUN-20261025-020). Complete remaining functional coverage, define deterministic canonical results for hardware/QEMU comparison, and archive build/ELF/map identities before claiming H5 complete; physical jitter evidence is not required. |
 
 ### RUN-20261025-020 - CM7_2 STM2_CH3 characterization and invalid-ID checks
 
@@ -641,7 +641,7 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Outcome | `PASS` for STM-001..004 on CM7_2/STM2_CH3 and for rejection of the invalid command value. The value-5 FAIL result is expected input validation, not a peripheral test failure. |
 | Evidence paths | User-supplied screenshots `codex-clipboard-48d7fe7c-617c-48dd-8839-6d0627f969b3.png` (ID 1), `codex-clipboard-5cb7e351-a4fd-49e6-9383-1f36a19cd9df.png` (ID 2), `codex-clipboard-4f59da8b-765c-4069-bae3-c9aa371f57db.png` (ID 3), `codex-clipboard-44be4376-6845-4bf1-a20b-8f9dbd96303e.png` (ID 4), and `codex-clipboard-a6e4e25c-ebbb-4182-b1ea-3ec74e1a3611.png` (invalid value 5); durable repository copies and build artifacts not archived. |
 | Deviations/issues | Exact launch configuration export, numerical periodic-task counts, and ELF/map identities were not captured. Counter/readback checks are functional sanity checks, not timing accuracy or jitter measurements. |
-| Follow-up | Both core-owned CH3 channels have passed STM-001..004 functional checks. Add timing accuracy/jitter evidence and archive build/ELF/map identities before claiming H5 complete. |
+| Follow-up | Both core-owned CH3 channels have passed STM-001..004 functional checks. Complete remaining functional coverage, define deterministic canonical results for hardware/QEMU comparison, and archive build/ELF/map identities before claiming H5 complete; physical jitter evidence is not required. |
 
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
@@ -700,7 +700,7 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | H1/2 Combined gate | IN PROGRESS | RUN-20261025-017 | Standalone no-debugger cold boot, defined soak/repetition evidence, negative boot/hook tests, UART/LED observability, and durable qualification artifacts remain open. |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
-| H5 Timers/timebase | IN PROGRESS | RUN-20261025-020 | STM-001..004 pass on both CM7_0/STM0_CH3 and CM7_2/STM2_CH3; timing accuracy/jitter and archived build artifacts remain open. |
+| H5 Timers/timebase | IN PROGRESS | RUN-20261025-020 | STM-001..004 pass functionally on both CM7_0/STM0_CH3 and CM7_2/STM2_CH3. Remaining functional coverage, deterministic canonical outputs for hardware/QEMU parity, and archived build artifacts remain open; physical jitter is not a gate (D-027). |
 | H6 LPUART stress | PLANNED | - | |
 | H7 ADC/I2C | PLANNED | - | |
 | H8 LPSPI/eDMA | PLANNED | - | |

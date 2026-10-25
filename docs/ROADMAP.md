@@ -64,7 +64,7 @@ Combined hardware gate H1/2:
 - the external UART banner identifies build, physical core, RTOS version, reset cause, and clock values;
 - enabled diagnostic hooks are exercised through a safe controlled negative test.
 
-QEMU gate Q1/2: run the same two AMP images and compare per-core task/event sequences. If the model initially supports only `M7_0_0`, record the missing secondary-core capability explicitly; a single-core run does not qualify as full AMP parity.
+QEMU gate Q1/2: run the same two AMP images and test command sequence, then compare canonical per-core result values and task/event sequences with hardware. If the model initially supports only `M7_0_0`, record the missing secondary-core capability explicitly; a single-core run does not qualify as full AMP parity. Host wall-clock jitter is not compared.
 
 ## Phase 3 - Versioned test harness
 
@@ -98,11 +98,11 @@ Hardware gate H4: logic-visible GPIO levels and interrupt counts match expected 
 
 Objective: extend and stress the STM activation baseline and characterize additional timer/interrupt behavior needed by later tests.
 
-Tests: PIT/STM periodic and one-shot interrupts, wraparound, priority/nesting, ISR-to-task notification latency, timeout accuracy, and optional latency measurement with GPIO toggles.
+Tests: PIT/STM periodic and one-shot interrupts, wraparound, priority/nesting, ISR-to-task notification behavior, and timeout behavior. Run the same tests on hardware and QEMU and compare canonical result values. External frequency/latency/jitter measurements are not a release or model-parity requirement.
 
-Current checkpoint (2026-10-25): debugger-selected STM tests are implemented on the unused channel 3 of each core-owned instance. Stable test IDs `STM-001` through `STM-004` cover one-shot compare interrupt, continuous compare interrupt, counter monotonicity, and compare readback. The application runner uses the existing 10 ms task on each core and does not alter periodic channels 0-2. STM-001..004 have passed functional checks on CM7_0/STM0_CH3 (`RUN-20261025-018` and `RUN-20261025-019`) and CM7_2/STM2_CH3 (`RUN-20261025-020`); timing accuracy/jitter evidence and archived build artifacts remain pending.
+Current checkpoint (2026-10-25): debugger-selected STM tests are implemented on the unused channel 3 of each core-owned instance. Stable test IDs `STM-001` through `STM-004` cover one-shot compare interrupt, continuous compare interrupt, counter monotonicity, and compare readback. The application runner uses the existing 10 ms task on each core and does not alter periodic channels 0-2. STM-001..004 have passed functional checks on CM7_0/STM0_CH3 (`RUN-20261025-018` and `RUN-20261025-019`) and CM7_2/STM2_CH3 (`RUN-20261025-020`). Before claiming H5/QEMU parity, complete the remaining wraparound/priority/notification/timeout tests and make canonical outputs deterministic so the same test software can report matching values on board and model. Physical jitter measurement is not a gate (D-027).
 
-Hardware gate H5: scope/logic-analyzer or debugger timestamp evidence meets defined frequency, jitter, and count tolerances.
+Hardware/model gate H5: the same timer/interrupt test software completes on hardware and QEMU, and all canonical result fields match exactly per core. Make phase-sensitive measurements deterministic or exclude them from the canonical result contract; physical jitter is not required. See D-027.
 
 ## Phase 6 - LPUART transport and data-path stress
 
