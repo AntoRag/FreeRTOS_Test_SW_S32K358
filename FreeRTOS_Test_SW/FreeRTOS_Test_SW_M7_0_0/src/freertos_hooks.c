@@ -9,18 +9,19 @@
 #include "task.h"
 
 
-volatile uint32_t g_Core0IdleIterationCount			=	0;
+/* This symbol is image-local even though both ELFs use the same name. */
+volatile uint32_t g_AppIdleIterationCount = 0U;
 
 void vApplicationIdleHook(void)
 {
-    g_Core0IdleIterationCount++;
+    g_AppIdleIterationCount++;
 }
 
 
 /* vApplicationMallocFailedHook() captures failures from the temporary dynamic-allocation configuration. */
 void vApplicationMallocFailedHook(void)
 {
-    AppFault_A_Set(APP_FATAL_MALLOC_FAILED);
+    AppFault_Set(APP_FATAL_MALLOC_FAILED);
 
     taskDISABLE_INTERRUPTS();
 
@@ -39,7 +40,7 @@ void vApplicationStackOverflowHook(
     (void)taskHandle;
     (void)taskName;
 
-    AppFault_A_Set(APP_FATAL_STACK_OVERFLOW);
+    AppFault_Set(APP_FATAL_STACK_OVERFLOW);
 
     taskDISABLE_INTERRUPTS();
 

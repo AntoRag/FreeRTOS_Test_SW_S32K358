@@ -149,17 +149,17 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Status: ACCEPTED
 - Date: 2026-10-24
 - Revised: 2026-10-25
-- Decision: `CM7_0` in image `M7_0_0` is the boot coordinator and the sole executor of system-global initialization. `CM7_2` in image `M7_0_2` must remain held or wait at a bounded software barrier until `CM7_0` declares global initialization complete. After that release, both images enter their independent application initialization and start their own FreeRTOS schedulers.
+- Decision: `CM7_0` in image `M7_0_0` is the boot coordinator and the sole executor of system-global initialization. `CM7_2` remains held by hardware until `CM7_0` completes that initialization and explicitly releases it through Power/MC_ME. After release, both images enter their independent application initialization and start their own FreeRTOS schedulers.
 - Global initialization ownership: only `CM7_0` configures the system clock tree/PLL, global mode and clock distribution, shared pin/routing state, shared-resource ownership, and the eventual standalone release/start address of `CM7_2`. A global hardware configuration API must not be called independently by both images merely because both projects contain a generated driver copy.
 - Core-local initialization: each executing application core initializes its own vector-table/NVIC state, FreeRTOS kernel objects, tasks, diagnostics, and exclusively owned peripheral instances. Consequently `IntCtrl_Ip_Init()` remains a per-core call with a per-core configuration, while `Clock_Ip_Init()` is a `CM7_0`-only system call.
 - Peripheral rule: each physical peripheral instance has exactly one initialization owner. `STM_0` channels 0/1/2 are owned by `CM7_0` for TaskA, and `STM_2` channels 0/1/2 are owned by `CM7_2` for TaskB. Both ownership paths, interrupt routes, and 1 MHz timebases are hardware-proven by `RUN-20261025-015`.
-- Debug boundary: a debugger group launch may currently start or prepare both cores, but it is not the production boot contract. If the debugger releases `CM7_2` before `CM7_0` is ready, the secondary image must still wait at the same software readiness barrier used by hardware and QEMU.
-- Interface implementation: board initialization is separated into primary-only `Bsp_SystemInit()` and per-image local initialization. D-018 and D-020 resolve the readiness transport and shared-memory/cache attributes. The iteration-bounded polling limit is implemented, while calibrated timeout semantics, negative-path hardware evidence, warm-reset handling, and peer-failure reaction remain open.
+- Debug boundary: the debugger and QEMU must preserve the production ownership rule and must not independently release `CM7_2` ahead of the application-owned MC_ME transition. A launch mode that violates that rule is diagnostic-only and is not a valid boot test.
+- Interface implementation: board initialization is separated into primary-only `BspSystem_Init()` and common core-local logic configured by each image. D-024 supersedes the former polled `SYSTEM_READY` barrier: successful MC_ME release is now the readiness gate, while the shared SRAM object carries per-core acknowledgement and error payloads.
 - Reason: this matches automotive master/worker startup practice, prevents concurrent or repeated programming of global registers, preserves independent AMP application execution, and gives hardware and QEMU one deterministic startup sequence to compare.
 
 ## D-018 - CM7_2 hardware release and shared startup mailbox
 
-- Status: ACCEPTED
+- Status: SUPERSEDED by D-024
 - Date: 2026-10-24
 - Revised: 2026-10-25
 - Decision: Separate physical core release from logical readiness. In the standalone boot path, `CM7_0` programs the `CM7_2` start address and releases the secondary core through `MC_ME`. The persistent `SYSTEM_READY` condition is communicated through a small, versioned boot mailbox in shared SRAM. A cross-core interrupt is not the initial source of truth and is not required for the first implementation.
@@ -178,14 +178,14 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Date: 2026-10-24
 - Decision: Preserve the toolchain and NXP runtime entry sequence in both images: the linker entry remains `Reset_Handler`, the startup assembly performs C-runtime initialization, and then calls the standard C `main()`. Each `main()` is a minimal adapter into project-owned functions rather than being renamed or replaced in startup/linker configuration.
 - Primary image: `M7_0_0` follows `Reset_Handler -> main() -> Core0_Boot() -> Core0_Main()`. `Core0_Boot()` owns boot coordination and system-global initialization; `Core0_Main()` owns CM7_0-local initialization, CM7_0-owned services, TaskA creation, and scheduler startup.
-- Secondary image: `M7_0_2` follows `Reset_Handler -> main() -> Core2_Boot() -> Core2_Main()`. `Core2_Boot()` validates and waits on the bounded boot-mailbox protocol; `Core2_Main()` owns CM7_2-local initialization, CM7_2-owned services, TaskB creation, and scheduler startup.
+- Secondary image: `M7_0_2` follows `Reset_Handler -> main() -> Core2_Boot() -> Core2_Main()`. Hardware arrival at `Core2_Boot()` is already gated by the application-owned MC_ME release; it publishes `CORE2_STARTING` without polling. `Core2_Main()` owns CM7_2-local initialization, CM7_2-owned services, TaskB creation, `CORE2_READY` publication, and scheduler startup.
 - Naming boundary: these functions are logical software entrypoints inside the existing two application ELFs. They do not create a separately linked or independently updateable bootloader. A future bootloader/application split would require separate images, flash partitions, validation, and controlled handover and is outside this decision.
 - Migration rule: first perform a behavior-preserving CM7_0 source refactor and repeat the existing TaskA hardware regression. Add mailbox state, `MC_ME` release, and the CM7_2 application path only in later experiments so each hardware test introduces one architectural variable.
 - Reason: the split makes boot ownership explicit and testable while retaining the generated startup, debugger expectations, C-runtime initialization, and QEMU-compatible ELF entry semantics.
 
 ## D-020 - Boot mailbox V1 address, layout, and ownership
 
-- Status: ACCEPTED
+- Status: SUPERSEDED by D-024
 - Date: 2026-10-24
 - Decision: Boot-mailbox protocol V1 occupies the fixed 256-byte range `0x204BFF00` through `0x204BFFFF`. All CM7_0/CM7_2 FLASH and RAM linker scripts reserve this range as the `NOLOAD` output section `.boot_mailbox`, aligned to 32 bytes, with identical start/end symbols and a linker size assertion.
 - Memory attributes: the generated startup MPU region beginning at `0x20480000` retains its 256 KiB size and therefore covers the mailbox as normal, shareable, non-cacheable, read/write, execute-never memory on both application cores. The smaller linker allocation named `int_sram_shareable` prevents ordinary shared data from occupying the mailbox but does not reduce the MPU region.
@@ -226,6 +226,29 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - RAM/ECC consequence: the same stock macro also performs a DMA-based SRAM initialization. Disabling the complete macro exposed an ECC fault when C code first wrote the mailbox excluded from the primary startup ECC range. Firmware startup, not the debugger, must initialize the complete SRAM/ECC range needed by the application. The accepted correction is to extend the existing primary `startup_cm7.s` shared-SRAM 64-bit initialization loop through the mailbox end at `0x204C0000`; do not reproduce the macro's MC_ME/core-reset side effects.
 - Source: NXP Community, `Dual cores debugging with PEMicro's MULTILINK by S32DS for S32K324`, published 2022-06-22. The guide is precedent for disabling a device macro when it leaves the secondary start address at zero; S32K358 applicability was established by inspecting the installed S32K358 macro and by this board experiment.
 
+## D-024 - MC_ME release is the boot gate; shared SRAM carries acknowledgement only
+
+- Status: ACCEPTED
+- Date: 2026-10-25
+- Decision: In the application-owned cold-boot path, `CM7_0` calls `BspSystem_ReleaseCore2()` only after system-global initialization succeeds. Therefore the Power/MC_ME release itself is the authorization for `CM7_2` to begin core-local initialization; `CM7_2` no longer polls a shared `SYSTEM_READY` field.
+- Failure containment: if `BspSystem_Init()` fails, `Core0_Boot()` returns a fatal error without executing the MC_ME release, so `CM7_2` remains held. This invariant depends on the debugger and QEMU not independently starting the secondary core.
+- Acknowledgement protocol: the original V2 secondary-only layout is superseded by the symmetric V3 status layout in D-025. The MC_ME boot-gate decision itself remains accepted.
+- Ready boundary: secondary `READY` means CM7_2 local interrupt/timebase initialization and TaskB creation succeeded. It is published immediately before the task-release channels and secondary scheduler are started. `AppFault_Set()` publishes `FAILED` for nonzero local fatal errors, including startup failures and enabled FreeRTOS failure hooks.
+- Primary behavior: CM7_0 does not block its own scheduler startup waiting for the acknowledgement. The V2 fields are currently for debugger/test evidence and future primary supervision. Any future primary wait or health monitor must be bounded and introduced as a separate decision and hardware experiment.
+- Evidence boundary: the V2 code path is implemented but not yet build- or hardware-confirmed. The fixed linker placement, MPU attributes, and primary-owned ECC initialization were proven for the same storage by `RUN-20261025-015`; that earlier run proved protocol V1 and must not be cited as evidence for V2 state publication.
+
+## D-025 - Shared AMP implementation with image-local configuration and symmetric diagnostics
+
+- Status: ACCEPTED
+- Date: 2026-10-25
+- Decision: retain two independently linked AMP ELFs and two independent single-core FreeRTOS instances, while compiling the same reviewed sources from `common/src` into both images for core identity, core-local interrupt initialization, STM initialization/dispatch, status publication, and fatal-error reporting. TaskA/TaskB definitions, logical boot/main entrypoints, generated RTD configuration, and primary-only system initialization remain image-local.
+- Configuration boundary: common modules obtain RTD bindings through immutable descriptors implemented by each image in `bsp_platform_config.c`. Common code must not select between `IntCtrlConfig_0`/`IntCtrlConfig_2` or `STM_0`/`STM_2` symbols with a runtime switch. The physical core ID is used to validate that an ELF is executing on its intended core and to map hardware IDs 0 and 2 to contiguous application indexes 0 and 1.
+- Project integration: each S32DS project exposes `../common/src` as the linked source folder `common_src`, and every build configuration treats it as a source entry. The existing `../common/include` include path remains shared. This metadata is project-owned; generated RTD/S32 Configuration Tools files are not manually edited.
+- Diagnostic contract: boot-status protocol V3 retains the fixed 256-byte `.boot_mailbox` linker reservation for compatibility but exposes `g_AppSystemStatus` with `core[APP_CORE_PRIMARY]` and `core[APP_CORE_SECONDARY]`. Each slot contains state and fatal error. CM7_0 initializes the complete object while CM7_2 is held; afterward each core writes only its own slot through `AppSystemStatus_PublishCurrentCore()` and `AppFault_Set()`.
+- Local runtime diagnostics: each ELF exposes the same image-local symbols `g_AppTaskDiagnostics[APP_TASK_RATE_COUNT]`, `g_BspTimebaseInterruptCount[APP_TASK_RATE_COUNT]`, and `g_AppIdleIterationCount`. The selected ELF/debug session supplies core and TaskA/TaskB context, avoiding duplicated core-specific APIs and scalar counters.
+- Readiness semantics: both cores publish `READY` after local NVIC/STM initialization and task creation, before starting STM releases and their scheduler. The status object is diagnostic/persistent state, not a release barrier; MC_ME remains the only CM7_2 boot gate.
+- Evidence boundary: `RUN-20261025-016` hardware-confirms that the common-source BSP/timebase/task-diagnostics refactor preserves all six periodic task paths with exact ISR/task-count equality. The run does not directly observe `g_AppSystemStatus`, archive the build console/ELF/map identities, or prove standalone cold boot; protocol-V3 state publication therefore remains open.
+
 ## Open decisions
 
 - Full package/build identifiers and applicable safety documentation to freeze beyond S32DS 3.6.5, RTD 7.0.0, GCC 10.2, and FreeRTOS V11.1.0.
@@ -234,5 +257,5 @@ Status values: `PROPOSED`, `ACCEPTED`, `SUPERSEDED`, `REJECTED`.
 - Coding standard target (project convention only, MISRA-oriented, or formal MISRA compliance).
 - Host-runner language and artifact format.
 - Required QEMU machine/core configuration and currently implemented peripherals.
-- Exact boot-mailbox polling timeout value, warm-reset generation/stale-state scheme, and deterministic timeout/failure reaction.
+- Warm-reset generation/stale-state handling and primary reaction to a `CORE2_FAILED` or missing `CORE2_READY` acknowledgement.
 - Available lab equipment: oscilloscope/logic analyzer, CAN interface, LIN interface, Ethernet peer, loopback wiring, and SD card.

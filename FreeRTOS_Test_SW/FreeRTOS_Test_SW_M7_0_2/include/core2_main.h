@@ -12,17 +12,16 @@
 #include <app_fault.h>
 
 /*
- * Debugger-visible proof that CM7_2 passed the boot barrier and entered
- * its application layer.
+ * Debugger-visible proof that CM7_2 was released by CM7_0 and entered its
+ * application layer.
  */
 extern volatile uint32_t g_Core2MainEntered;
 
 /*
  * Enter the CM7_2 application.
  *
- * This initial version only proves control-flow entry. FreeRTOS local
- * initialization and TaskB creation will be added after the mailbox
- * consumer has passed its hardware test.
+ * On success this function does not return because the independent CM7_2
+ * FreeRTOS scheduler runs. A return therefore identifies a fatal error.
  */
 AppFaultCodeType Core2_Main(void);
 

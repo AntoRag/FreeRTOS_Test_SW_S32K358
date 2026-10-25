@@ -4,9 +4,10 @@
  *  Created on: 24 ott 2026
  *      Author: anton
  */
-#include <app_tasks.h>
-#include <bsp_init.h>
-#include <bsp_timebase.h>
+#include "app_system_status.h"
+#include "app_tasks.h"
+#include "bsp_core.h"
+#include "bsp_timebase.h"
 #include "core0_main.h"
 
 #include "FreeRTOS.h"
@@ -20,10 +21,17 @@ AppFaultCodeType Core0_Main(void)
 	 */
 	BspInitStatusType bspStatus;
 
-	bspStatus = Bsp_Core0Init();
+	bspStatus = BspCore_Init();
 	if (bspStatus != BSP_INIT_SUCCESS)
 	{
-		return APP_FATAL_INTERRUPT_INIT;
+		if (bspStatus == BSP_INIT_CORE_MISMATCH)
+		{
+			return APP_FATAL_CORE_ID;
+		}
+
+		return (bspStatus == BSP_INIT_INVALID_CONFIG)
+		    ? APP_FATAL_BSP_CONFIG
+		    : APP_FATAL_INTERRUPT_INIT;
 	}
 
 
@@ -31,9 +39,12 @@ AppFaultCodeType Core0_Main(void)
 	 * CM7_0-owned application resources.
 	 */
 	/* Initialise timebase + create task(s) */
-	BspTimebase_Init();
+	if (!BspTimebase_Init())
+	{
+		return APP_FATAL_TIMEBASE_INIT;
+	}
 
-	if (AppTasks_CreateA() != pdPASS)
+	if (AppTasks_Create() != pdPASS)
 	{
 		return APP_FATAL_TASK_CREATE;
 	}
@@ -41,7 +52,19 @@ AppFaultCodeType Core0_Main(void)
 	/*
 	 * Task handles exist before the STM channels are started.
 	 */
-	BspTimebase_Start();
+	/*
+	 * READY means that all core-local resources and task handles exist.
+	 * It does not claim that the scheduler has already started executing.
+	 */
+	(void)AppSystemStatus_PublishCurrentCore(
+	    APP_CORE_STATE_READY,
+	    (uint32_t)APP_FATAL_NONE
+	);
+
+	if (!BspTimebase_Start())
+	{
+		return APP_FATAL_TIMEBASE_INIT;
+	}
 
 	vTaskStartScheduler();
 

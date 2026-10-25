@@ -6,9 +6,9 @@
  */
 
 
-#include <bsp_init.h>
+#include "app_system_status.h"
+#include "bsp_system.h"
 #include "core0_boot.h"
-#include "boot_sync.h"
 
 
 AppFaultCodeType Core0_Boot(void)
@@ -19,22 +19,27 @@ AppFaultCodeType Core0_Boot(void)
      * system initialization result is published.
      */
 
-    BootSync_PrimaryInitialize();
+    if (!AppSystemStatus_PrimaryInitialize())
+    {
+        return APP_FATAL_CORE_ID;
+    }
 
     /*
      * CM7_0 is the sole owner of system-global initialization.
      */
-    bspStatus = Bsp_SystemInit();
+    bspStatus = BspSystem_Init();
 
     if (bspStatus != BSP_INIT_SUCCESS)
     {
-        BootSync_PrimaryPublishSystemFailure(BOOT_SYNC_SYSTEM_ERROR_CLOCK_INIT);
+        /* CM7_2 remains held because the MC_ME release is not executed. */
         return APP_FATAL_CLOCK_INIT;
     }
 
-    BootSync_PrimaryPublishSystemReady();
-
-    Bsp_ReleaseCore2();
+    /*
+     * MC_ME release is the readiness gate. Reaching this call proves that
+     * CM7_0 completed the system-global initialization successfully.
+     */
+    BspSystem_ReleaseCore2();
 
     return APP_FATAL_NONE;
 }

@@ -509,6 +509,56 @@ User-provided prerequisite: the FRDM-A-S32K358 board is known working and has al
 | Deviations/issues | A clean-build console log and exact ELF/map identities were not archived. The run used the debugger Launch Group, so standalone power-cycle/cold-boot release without debugger participation remains unconfirmed. `CORE2_READY` publication, failure/timeout/warm-reset cases, and hardware-assisted wake-up remain open. |
 | Follow-up | Git checkpoint `49b4ad7` was created and pushed. Next perform a standalone power-cycle test that flashes both images once and observes execution without allowing the debugger to create or release CM7_2 state; separately implement and prove CM7_2 `WAITING`/`READY`/`FAILED` publication. |
 
+### RUN-20261025-016 - Common-source AMP refactor regression
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-25 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | PEmicro path from S32DS; exact probe firmware not yet recorded |
+| S32DS/PEmicro version | S32DS 3.6.5; stock `S32K358.mac` remains disabled by local rename |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0, one independent single-core instance per ELF |
+| Compiler/version | NXP GCC Arm bare metal 10.2 |
+| Build configuration | `Debug_FLASH`; two AMP ELF images observed in their respective debugger contexts |
+| Git commit/build ID | Uncommitted common-source/protocol-V3 refactor working tree |
+| Core(s) | CPU2 / `M7_0_2` and CPU1 / `M7_0_0` |
+| Test ID(s) | `H1-COMMON-SOURCE-AMP-REGRESSION` |
+| Preconditions | Both core projects compile the linked `common_src` folder; common core/timebase/status/fault APIs replace the duplicated implementations; TaskA and TaskB definitions and RTD binding descriptors remain image-local. |
+| Procedure/command | Build and run the refactored `Debug_FLASH` AMP images on hardware, suspend each debugger context, and compare `g_BspTimebaseInterruptCount[]` with `g_AppTaskDiagnostics[].executionCount` for all three rate indexes. |
+| Expected result/tolerance | Each local 10/100/1000 ms STM interrupt count equals the corresponding task execution count, allowing a transient difference of one if halted between notification and execution; task diagnostic `lastError` remains zero. |
+| Actual result | CPU2 reported `g_Core2MainEntered=1`, STM counts `168/16/1`, matching TaskB execution counts `168/16/1`, and all three `lastError` fields zero. CPU1 reported STM counts `1444/144/14`, matching TaskA execution counts `1444/144/14`, and all three `lastError` fields zero. The distinct array addresses in the two ELF contexts confirm that the common sources were compiled independently into each AMP image rather than creating shared scheduler/task storage. |
+| Outcome | `PASS` for the common-source BSP/timebase/task-diagnostics refactor and simultaneous three-rate task execution on both application cores |
+| Evidence paths | User-supplied debugger screenshots `codex-clipboard-6a9409a3-adeb-4bdb-80f7-bc2e69fa4c93.png` (CPU2) and `codex-clipboard-91e73ca8-0565-4b82-aaeb-b0a48a741bc3.png` (CPU1); durable repository copies and hashes not archived |
+| Deviations/issues | The screenshots do not expose `g_AppSystemStatus`, so protocol-V3 `STARTING/READY/FAILED` publication is not directly proven by this run. Build console, ELF/map identities, reset/power-cycle behavior, soak duration, and `g_AppIdleIterationCount` were not captured. |
+| Follow-up | Inspect `g_AppSystemStatus` from both debugger sessions in one bounded run, then checkpoint the refactor and its documentation. |
+
+### RUN-20261025-017 - Protocol-V3 status confirmation after common-source refactor
+
+| Field | Value |
+|---|---|
+| Date/time/timezone | 2026-10-25 Europe/Rome |
+| Operator | Antonio Ragazzo |
+| Target | `HARDWARE` |
+| Board/model revision | FRDM-A-S32K358; PCB revision not yet recorded |
+| Probe and firmware | PEmicro path from S32DS; exact probe firmware not yet recorded |
+| S32DS/PEmicro version | S32DS 3.6.5; stock `S32K358.mac` remains disabled by local rename |
+| RTD/SDK version | PlatformSDK/RTD 7.0.0 |
+| FreeRTOS version | V11.1.0, one independent single-core instance per ELF |
+| Build configuration | `Debug_FLASH`; two AMP ELF images observed in their respective debugger contexts |
+| Git commit/build ID | Working tree immediately before checkpoint commit |
+| Core(s) | CPU2 / `M7_0_2` and CPU1 / `M7_0_0` |
+| Test ID(s) | `H1-STATUS-V3-READY` |
+| Procedure/command | Observe `g_AppSystemStatus` and the generic rate-indexed diagnostics while both AMP images execute. |
+| Expected result/tolerance | Magic `0x41535453`, protocol version `3`, both core states `READY` (`2`), both fatal-error fields `0`; each task count continues to match its STM interrupt count. |
+| Actual result | `g_AppSystemStatus.magic=1095980115` (`0x41535453`), `protocolVersion=3`, `core[0].state=2`, `core[0].fatalError=0`, `core[1].state=2`, `core[1].fatalError=0`. CPU2 counts were `389/38/3`, exactly matching its task diagnostics; CPU1 counts were `2506/250/25`, exactly matching its task diagnostics; all observed `lastError` fields were `0`. |
+| Outcome | `PASS` for protocol-V3 status publication and dual-core READY/error-free runtime observation |
+| Evidence paths | User-supplied debugger screenshots `codex-clipboard-64bb2cd1-611b-4769-b599-6081f57cda8f.png` (CPU2 plus shared status) and `codex-clipboard-2cc33fb9-a2fc-465a-9466-c9b900fb934a.png` (CPU1); durable repository copies and hashes not archived |
+| Deviations/issues | Cold power-cycle, standalone no-debugger execution, soak duration, build console, and exact ELF/map identities remain unarchived. |
+| Follow-up | Commit and push the common-source AMP refactor and aligned documentation; retain standalone cold-boot and QEMU parity as subsequent gates. |
+
 Copy the template below for each executed test. Do not overwrite earlier evidence; append a new run.
 
 ## Run template
@@ -559,11 +609,11 @@ Copy the template below for each executed test. Do not overwrite earlier evidenc
 | Gate | Status | Latest run | Notes |
 |---|---|---|---|
 | H0 Reproducible baseline | PASS | RUN-20261023-002 | Clean build artifacts, repeatable primary flash/reset/halt, and multicore group launch verified on hardware |
-| H1A Primary FreeRTOS/TaskA runtime | FUNCTIONAL PASS | RUN-20261024-008 | CM7_0 scheduler, STM0 releases, all three TaskA rates, and the CM7_0 Idle hook are hardware-proven; immediate preemption latency remains unmeasured. |
-| H1B Secondary FreeRTOS/TaskB runtime | FUNCTIONAL PASS IN INTEGRATED RUN | RUN-20261025-015 | CM7_2 scheduler, STM2 releases, and all three TaskB rates are hardware-proven while both images execute; no separate secondary-only qualification artifact was retained. |
-| H1C Simultaneous AMP runtime | FUNCTIONAL PASS | RUN-20261025-015 | Both independent schedulers and all six periodic tasks execute simultaneously with exact ISR/task-count agreement and fatal states zero; exact ELF/map artifacts were not archived for a formal overlap check. |
-| H1D Observability completion | IN PROGRESS | RUN-20261025-015 | Six-task counters pass. CM7_2 Idle-hook parity, distinct LED/trace behavior, and the core-0 UART identity banner remain open. |
-| H1/2 Combined gate | IN PROGRESS | RUN-20261025-015 | Standalone no-debugger cold boot, defined soak/repetition evidence, `CORE2_READY`, negative boot/hook tests, UART/LED observability, and durable qualification artifacts remain open. |
+| H1A Primary FreeRTOS/TaskA runtime | FUNCTIONAL PASS | RUN-20261025-017 | The common-source refactor preserves all three TaskA rates with exact ISR/task-count equality; earlier runs additionally prove the CM7_0 Idle hook. Immediate preemption latency remains unmeasured. |
+| H1B Secondary FreeRTOS/TaskB runtime | FUNCTIONAL PASS IN INTEGRATED RUN | RUN-20261025-017 | The common-source refactor preserves CM7_2 entry and all three TaskB rates with exact ISR/task-count equality while both images execute. |
+| H1C Simultaneous AMP runtime | FUNCTIONAL PASS | RUN-20261025-017 | Both independently linked common implementations and all six periodic tasks execute with exact ISR/task-count agreement; exact ELF/map artifacts were not archived for a formal overlap check. |
+| H1D Observability completion | IN PROGRESS | RUN-20261025-017 | Generic diagnostics and protocol-V3 magic/version/READY/error fields pass on both cores. CM7_2 Idle-hook parity, distinct LED/trace behavior, and the core-0 UART identity banner remain open. |
+| H1/2 Combined gate | IN PROGRESS | RUN-20261025-017 | Standalone no-debugger cold boot, defined soak/repetition evidence, negative boot/hook tests, UART/LED observability, and durable qualification artifacts remain open. |
 | H3 Test harness | PLANNED | - | |
 | H4 GPIO/interrupts | PLANNED | - | |
 | H5 Timers/timebase | PLANNED | - | |

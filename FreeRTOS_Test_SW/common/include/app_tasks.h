@@ -1,62 +1,53 @@
 /*
  * app_tasks.h
  *
- *  Created on: 24 ott 2026
- *      Author: anton
+ * Common interface implemented independently by the TaskA and TaskB images.
  */
 
 #ifndef APP_TASKS_H_
 #define APP_TASKS_H_
 
-/* FreeRTOS kernel interfaces. */
-#include "FreeRTOS.h"
-#include "task.h"
 #include <stdint.h>
 
-#define APP_TASK_A_10MS_PRIORITY        				(tskIDLE_PRIORITY + 3U)
-#define APP_TASK_A_100MS_PRIORITY        				(tskIDLE_PRIORITY + 2U)
-#define APP_TASK_A_1000MS_PRIORITY        				(tskIDLE_PRIORITY + 1U)
+#include "FreeRTOS.h"
+#include "task.h"
 
+#define APP_TASK_10MS_PRIORITY       (tskIDLE_PRIORITY + 3U)
+#define APP_TASK_100MS_PRIORITY      (tskIDLE_PRIORITY + 2U)
+#define APP_TASK_1000MS_PRIORITY     (tskIDLE_PRIORITY + 1U)
 
-#define APP_TASK_A_10MS_STACK_DEPTH    					(256U)
-#define APP_TASK_A_100MS_STACK_DEPTH    				(256U)
-#define APP_TASK_A_1000MS_STACK_DEPTH    				(256U)
+#define APP_TASK_10MS_STACK_DEPTH    (256U)
+#define APP_TASK_100MS_STACK_DEPTH   (256U)
+#define APP_TASK_1000MS_STACK_DEPTH  (256U)
 
-#define APP_TASK_B_10MS_PRIORITY        				(tskIDLE_PRIORITY + 3U)
-#define APP_TASK_B_100MS_PRIORITY        				(tskIDLE_PRIORITY + 2U)
-#define APP_TASK_B_1000MS_PRIORITY        				(tskIDLE_PRIORITY + 1U)
+typedef enum
+{
+    APP_TASK_RATE_10MS = 0U,
+    APP_TASK_RATE_100MS,
+    APP_TASK_RATE_1000MS,
+    APP_TASK_RATE_COUNT
+} AppTaskRateType;
 
+typedef struct
+{
+    volatile uint32_t executionCount;
+    volatile uint32_t lastError;
+} AppTaskDiagnosticsType;
 
-#define APP_TASK_B_10MS_STACK_DEPTH    					(256U)
-#define APP_TASK_B_100MS_STACK_DEPTH    				(256U)
-#define APP_TASK_B_1000MS_STACK_DEPTH    				(256U)
+/*
+ * These symbols exist independently in each ELF. The ELF/debug session
+ * identifies whether the array describes TaskA or TaskB.
+ */
+extern volatile AppTaskDiagnosticsType
+    g_AppTaskDiagnostics[APP_TASK_RATE_COUNT];
 
+extern volatile uint32_t g_AppIdleIterationCount;
 
-extern volatile uint32_t g_Core0IdleIterationCount;
-extern volatile uint32_t g_Core0TaskA10msExecutionCount;
-extern volatile uint32_t g_Core0TaskA100msExecutionCount;
-extern volatile uint32_t g_Core0TaskA1000msExecutionCount;
+BaseType_t AppTasks_Create(void);
 
-extern volatile uint32_t g_Core2IdleIterationCount;
-extern volatile uint32_t g_Core2TaskB10msExecutionCount;
-extern volatile uint32_t g_Core2TaskB100msExecutionCount;
-extern volatile uint32_t g_Core2TaskB1000msExecutionCount;
+void AppTasks_ReleaseFromISR(
+    AppTaskRateType rate,
+    BaseType_t *higherPriorityTaskWoken
+);
 
-BaseType_t AppTasks_CreateA(void);
-
-BaseType_t AppTasks_CreateB(void);
-
-void AppTasks_ReleaseA10msFromISR(BaseType_t *higherPriorityTaskWoken);
-
-void AppTasks_ReleaseA100msFromISR(BaseType_t *higherPriorityTaskWoken);
-
-void AppTasks_ReleaseA1000msFromISR(BaseType_t *higherPriorityTaskWoken);
-
-void AppTasks_ReleaseB10msFromISR(BaseType_t *higherPriorityTaskWoken);
-
-void AppTasks_ReleaseB100msFromISR(BaseType_t *higherPriorityTaskWoken);
-
-void AppTasks_ReleaseB1000msFromISR(BaseType_t *higherPriorityTaskWoken);
-
-
-#endif /* APP_TASKS_CORE0_H_ */
+#endif /* APP_TASKS_H_ */

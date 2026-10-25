@@ -65,7 +65,7 @@ Rules: ASCII, one record per CRLF-terminated line, fixed field order per record 
 ## FreeRTOS policy
 
 - Use AMP: each ELF contains one independent single-core kernel with `configNUMBER_OF_CORES == 1`; do not enable FreeRTOS SMP.
-- Only the `M7_0_0` image performs global clock/system initialization. The `M7_0_2` image waits for the defined startup contract before using shared or globally initialized services.
+- Only the `M7_0_0` image performs global clock/system initialization. It releases `M7_0_2` through Power/MC_ME only after that work succeeds; the secondary must not be independently started around this contract.
 - Every peripheral, interrupt route, DMA channel, and associated buffer has one recorded owning core at a time.
 - Use only `...FromISR` APIs from interrupt context and honor the port's maximum syscall interrupt priority.
 - Prefer direct-to-task notifications for one-to-one events; queues for copied messages; mutexes only for ownership with priority inheritance.

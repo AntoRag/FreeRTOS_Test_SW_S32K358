@@ -11,28 +11,27 @@
 
 #include <stdint.h>
 
+#include "app_core.h"
+
 typedef enum
 {
     APP_FATAL_NONE = 0U,
+    APP_FATAL_CORE_ID,
+    APP_FATAL_BSP_CONFIG,
     APP_FATAL_TASK_CREATE,
     APP_FATAL_SCHEDULER_RETURNED,
     APP_FATAL_MALLOC_FAILED,
     APP_FATAL_STACK_OVERFLOW,
     APP_FATAL_CLOCK_INIT,
-    APP_FATAL_INTERRUPT_INIT
+    APP_FATAL_INTERRUPT_INIT,
+    APP_FATAL_TIMEBASE_INIT
 } AppFaultCodeType;
 
-extern volatile uint32_t g_Core0FatalError;
+/* Publish a fatal error in the executing core's shared status slot. */
+void AppFault_Set(AppFaultCodeType faultCode);
 
-extern volatile uint32_t g_Core2FatalError;
-
-void AppFault_A_Set(AppFaultCodeType faultCode);
-
-AppFaultCodeType AppFault_A_Get(void);
-
-void AppFault_B_Set(AppFaultCodeType faultCode);
-
-AppFaultCodeType AppFault_B_Get(void);
+/* Read the last fatal error published by the requested application core. */
+AppFaultCodeType AppFault_Get(AppCoreIndexType coreIndex);
 
 
-#endif /* APP_FAULT_CORE0_H_ */
+#endif /* APP_FAULT_H_ */

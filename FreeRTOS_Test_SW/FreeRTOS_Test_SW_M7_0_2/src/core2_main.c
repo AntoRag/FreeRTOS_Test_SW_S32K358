@@ -7,10 +7,10 @@
  * CM7_2 application entrypoint.
  */
 
-#include <app_tasks.h>
-#include <app_fault.h>
-#include <bsp_init.h>
-#include <bsp_timebase.h>
+#include "app_system_status.h"
+#include "app_tasks.h"
+#include "bsp_core.h"
+#include "bsp_timebase.h"
 #include "core2_main.h"
 
 #include "FreeRTOS.h"
@@ -23,10 +23,9 @@ AppFaultCodeType Core2_Main(void)
     /*
      * Reaching this assignment proves that:
      *
-     * 1. CM7_2 executed Core2_Boot();
-     * 2. the shared mailbox was recognized;
-     * 3. CM7_0 published SYSTEM_READY;
-     * 4. the protocol version matched.
+     * 1. CM7_0 completed global initialization;
+     * 2. CM7_0 released CM7_2 through MC_ME;
+     * 3. CM7_2 executed Core2_Boot().
      */
     g_Core2MainEntered = 1U;
 
@@ -35,10 +34,17 @@ AppFaultCodeType Core2_Main(void)
 	 */
 	BspInitStatusType bspStatus;
 
-	bspStatus = Bsp_Core2Init();
+	bspStatus = BspCore_Init();
 	if (bspStatus != BSP_INIT_SUCCESS)
 	{
-		return APP_FATAL_INTERRUPT_INIT;
+		if (bspStatus == BSP_INIT_CORE_MISMATCH)
+		{
+			return APP_FATAL_CORE_ID;
+		}
+
+		return (bspStatus == BSP_INIT_INVALID_CONFIG)
+		    ? APP_FATAL_BSP_CONFIG
+		    : APP_FATAL_INTERRUPT_INIT;
 	}
 
 
@@ -46,17 +52,33 @@ AppFaultCodeType Core2_Main(void)
 	 * CM7_2-owned application resources.
 	 */
 	/* Initialise timebase + create task(s) */
-	BspTimebase_Init();
+	if (!BspTimebase_Init())
+	{
+		return APP_FATAL_TIMEBASE_INIT;
+	}
 
-	if (AppTasks_CreateB() != pdPASS)
+	if (AppTasks_Create() != pdPASS)
 	{
 		return APP_FATAL_TASK_CREATE;
 	}
 
+    /*
+     * All CM7_2-local initialization and task creation succeeded.
+     * Publish the acknowledgement before enabling task releases and
+     * transferring control to the scheduler.
+     */
+    (void)AppSystemStatus_PublishCurrentCore(
+        APP_CORE_STATE_READY,
+        (uint32_t)APP_FATAL_NONE
+    );
+
 	/*
 	 * Task handles exist before the STM channels are started.
 	 */
-	BspTimebase_Start();
+	if (!BspTimebase_Start())
+	{
+		return APP_FATAL_TIMEBASE_INIT;
+	}
 
 	vTaskStartScheduler();
 

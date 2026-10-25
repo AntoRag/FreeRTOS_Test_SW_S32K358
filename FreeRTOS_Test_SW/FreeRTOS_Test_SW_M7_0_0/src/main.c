@@ -46,7 +46,7 @@ static void Core0_Halt(void)
 {
     for (;;)
     {
-        /* Some error occurred, inspect g_Core0FatalError */
+        /* Inspect g_AppSystemStatus.core[APP_CORE_PRIMARY].fatalError. */
     }
 }
 
@@ -64,9 +64,10 @@ int main(void)
     /*
      * Reaching this point always indicates a startup or scheduler failure.
      */
-	AppFault_A_Set(faultCode);
+	AppFault_Set(faultCode);
 	Core0_Halt();
 
+	return 0;
 }
 
 #ifdef __cplusplus

@@ -1,38 +1,30 @@
 /*
  * app_tasks.c
  *
- *  Created on: 24 ott 2026
- *      Author: anton
+ * CM7_0-owned TaskA definitions. The task API and diagnostics layout are
+ * common, while the actual workloads remain local to this AMP image.
  */
-#include <app_tasks.h>
 
+#include <stddef.h>
 
-volatile uint32_t g_Core0TaskA10msExecutionCount	=	0;
-volatile uint32_t g_Core0TaskA100msExecutionCount	=	0;
-volatile uint32_t g_Core0TaskA1000msExecutionCount	=	0;
+#include "app_tasks.h"
 
-static TaskHandle_t s_Core0TaskA10msHandle 				= 	NULL;
-static TaskHandle_t s_Core0TaskA100msHandle 			= 	NULL;
-static TaskHandle_t s_Core0TaskA1000msHandle 			= 	NULL;
+volatile AppTaskDiagnosticsType
+    g_AppTaskDiagnostics[APP_TASK_RATE_COUNT] = { { 0U, 0U } };
 
+static TaskHandle_t s_TaskHandles[APP_TASK_RATE_COUNT] = { NULL };
 
-
-/* Initial task used to validate notification blocking. */
 static void App_TaskA10ms(void *parameters)
 {
     (void)parameters;
 
     for (;;)
     {
-        /*
-         * Block until STM0 CH0 releases this task.
-         * pdFALSE consumes one pending notification at a time.
-         */
+        /* Consume one release produced by the local STM 10 ms channel. */
         (void)ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
+        g_AppTaskDiagnostics[APP_TASK_RATE_10MS].executionCount++;
 
-        g_Core0TaskA10msExecutionCount++;
-
-        /* Future 10 ms application workload goes here. */
+        /* Future CM7_0 10 ms workload goes here. */
     }
 }
 
@@ -42,15 +34,11 @@ static void App_TaskA100ms(void *parameters)
 
     for (;;)
     {
-        /*
-         * Block until STM0 CH1 releases this task.
-         * pdFALSE consumes one pending notification at a time.
-         */
+        /* Consume one release produced by the local STM 100 ms channel. */
         (void)ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
+        g_AppTaskDiagnostics[APP_TASK_RATE_100MS].executionCount++;
 
-        g_Core0TaskA100msExecutionCount++;
-
-        /* Future 100 ms application workload goes here. */
+        /* Future CM7_0 100 ms workload goes here. */
     }
 }
 
@@ -60,45 +48,42 @@ static void App_TaskA1000ms(void *parameters)
 
     for (;;)
     {
-        /*
-         * Block until STM0 CH2 releases this task.
-         * pdFALSE consumes one pending notification at a time.
-         */
+        /* Consume one release produced by the local STM 1000 ms channel. */
         (void)ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
+        g_AppTaskDiagnostics[APP_TASK_RATE_1000MS].executionCount++;
 
-        g_Core0TaskA1000msExecutionCount++;
-
-        /* Future 1000 ms application workload goes here. */
+        /* Future CM7_0 1000 ms workload goes here. */
     }
 }
 
-
-void AppTasks_ReleaseA10msFromISR(BaseType_t *higherPriorityTaskWoken)
+void AppTasks_ReleaseFromISR(
+    AppTaskRateType rate,
+    BaseType_t *higherPriorityTaskWoken
+)
 {
-	vTaskNotifyGiveFromISR(s_Core0TaskA10msHandle,higherPriorityTaskWoken);
+    /* The enum is also the index shared by tasks, STM channels and counters. */
+    if ((rate < APP_TASK_RATE_COUNT) &&
+        (s_TaskHandles[rate] != NULL) &&
+        (higherPriorityTaskWoken != NULL))
+    {
+        vTaskNotifyGiveFromISR(
+            s_TaskHandles[rate],
+            higherPriorityTaskWoken
+        );
+    }
 }
 
-void AppTasks_ReleaseA100msFromISR(BaseType_t *higherPriorityTaskWoken)
-{
-	vTaskNotifyGiveFromISR(s_Core0TaskA100msHandle,higherPriorityTaskWoken);
-}
-
-void AppTasks_ReleaseA1000msFromISR(BaseType_t *higherPriorityTaskWoken)
-{
-	vTaskNotifyGiveFromISR(s_Core0TaskA1000msHandle,higherPriorityTaskWoken);
-}
-
-BaseType_t AppTasks_CreateA(void)
+BaseType_t AppTasks_Create(void)
 {
     BaseType_t status;
 
     status = xTaskCreate(
         App_TaskA10ms,
         "TaskA_10ms",
-        APP_TASK_A_10MS_STACK_DEPTH,
+        APP_TASK_10MS_STACK_DEPTH,
         NULL,
-        APP_TASK_A_10MS_PRIORITY,
-        &s_Core0TaskA10msHandle
+        APP_TASK_10MS_PRIORITY,
+        &s_TaskHandles[APP_TASK_RATE_10MS]
     );
 
     if (status != pdPASS)
@@ -109,10 +94,10 @@ BaseType_t AppTasks_CreateA(void)
     status = xTaskCreate(
         App_TaskA100ms,
         "TaskA_100ms",
-        APP_TASK_A_100MS_STACK_DEPTH,
+        APP_TASK_100MS_STACK_DEPTH,
         NULL,
-        APP_TASK_A_100MS_PRIORITY,
-        &s_Core0TaskA100msHandle
+        APP_TASK_100MS_PRIORITY,
+        &s_TaskHandles[APP_TASK_RATE_100MS]
     );
 
     if (status != pdPASS)
@@ -120,14 +105,12 @@ BaseType_t AppTasks_CreateA(void)
         return pdFAIL;
     }
 
-    status = xTaskCreate(
+    return xTaskCreate(
         App_TaskA1000ms,
         "TaskA_1000ms",
-        APP_TASK_A_1000MS_STACK_DEPTH,
+        APP_TASK_1000MS_STACK_DEPTH,
         NULL,
-        APP_TASK_A_1000MS_PRIORITY,
-        &s_Core0TaskA1000msHandle
+        APP_TASK_1000MS_PRIORITY,
+        &s_TaskHandles[APP_TASK_RATE_1000MS]
     );
-
-    return status;
 }

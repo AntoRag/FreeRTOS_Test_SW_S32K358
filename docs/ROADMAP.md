@@ -52,7 +52,7 @@ Engineering work:
 - record activation and execution counts while deferring the overrun reaction policy;
 - use equal priority for tasks in the same rate class and rate-monotonic priority ordering between the 10 ms, 100 ms, and 1000 ms classes;
 - characterize SW2/SW3 polarity and record the board-manual discrepancy;
-- define a bounded startup/synchronization contract so `M7_0_2` cannot use global or shared hardware before `M7_0_0` declares it ready;
+- enforce the application-owned Power/MC_ME release contract so `M7_0_2` cannot execute before `M7_0_0` completes global initialization, and keep any later primary acknowledgement wait bounded;
 - record per-core clock, tick, cache/MPU, stack, and linker-memory settings.
 
 Combined hardware gate H1/2:

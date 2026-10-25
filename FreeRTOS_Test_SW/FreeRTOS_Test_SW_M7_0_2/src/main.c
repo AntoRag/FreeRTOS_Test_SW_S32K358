@@ -35,7 +35,7 @@ extern "C"{
 /* Including necessary configuration files. */
 #include "Mcal.h"
 
-#include "boot_sync.h"
+#include "app_fault.h"
 #include "core2_boot.h"
 #include "core2_main.h"
 
@@ -46,26 +46,20 @@ static void Core2_Halt(void)
         /*
          * Inspect:
          *
-         * g_Core2BootWaitStatus
-         * g_Core2BootPollCount
-         * g_BootSyncMailbox
+         * g_AppSystemStatus.core[APP_CORE_SECONDARY]
          */
     }
 }
 
 int main(void)
 {
-    BootSyncWaitStatusType bootStatus;
-
     AppFaultCodeType faultCode = APP_FATAL_NONE;
 
-    bootStatus = Core2_Boot();
+    Core2_Boot();
+    faultCode = Core2_Main();
 
-    if (bootStatus == BOOT_SYNC_WAIT_READY)
-    {
-        faultCode = Core2_Main();
-        AppFault_B_Set(faultCode);
-    }
+    /* Core2_Main() returns only when local startup or the scheduler fails. */
+    AppFault_Set(faultCode);
 
     Core2_Halt();
 
